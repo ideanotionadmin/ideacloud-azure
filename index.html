@@ -1,0 +1,726 @@
+﻿<!DOCTYPE html>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title></title>
+        <script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>        
+        <script src="http://code.createjs.com/createjs-2013.02.12.min.js"></script>
+        <script src="http://confoo-cloud.cloudapp.net/socket.io/socket.io.js"></script>
+        <script src="scripts/obb.js"></script>
+        <script src="scripts/helper.js"></script>
+        <script src="scripts/wordcloud/wordcloud.js"></script>
+        <script src="scripts/picwall/picwall.js"></script>
+        <link href='http://fonts.googleapis.com/css?family=Kavoon|Aclonica|Permanent+Marker' rel='stylesheet' type='text/css' />
+        <link href='style.css' rel='stylesheet' type='text/css' />
+        <script>
+            var sizeW = 1600;
+            var sizeH = 1200;
+            var mode = 0;
+
+            var manifest = [
+                { src: "shapes/no-mask.png", id: "noMask", data: { mask: true } },
+                { src: "shapes/circle.png", id: "circleMask", data: { mask: true } },
+                { src: "shapes/cloud.jpg", id: "cloud", data: { mask: false } },
+                { src: "shapes/cloud-mask.png", id: "cloudMask", data: { mask: true } },
+                { src: "shapes/xbox.jpg", id: "xbox", data: { mask: false } },
+                { src: "shapes/xbox-mask.png", id: "xboxMask", data: { mask: true } },
+                { src: "shapes/microsoft.jpg", id: "microsoft", data: { mask: false } },
+                { src: "shapes/microsoft-mask.png", id: "microsoftMask", data: { mask: true } }
+            ];
+            var canvas, preloader;
+            var cjs = this.createjs;            
+            var dataSourceUrl = "http://confoo-cloud.cloudapp.net:80/";
+            var fonts = ["Arial"];
+            var tweets = [];
+            var sinceId = 1000;
+
+
+            // debug related
+            var debug = false;
+            var controlShow = debug;
+            var turnOffHighlight = false;
+            var forceIdle = false;
+            var useDataSource = true;            
+
+            // performance related
+            var bg = [];
+
+            var insertCount = 0;
+            var stage;
+            var worker1, worker2, worker3, worker4, worker5;
+
+            function main() {
+
+                if (window.location.hash) {
+                    var i = parseInt(window.location.hash.substring(1)) ;
+                    $('#mode1').hide();
+                    $('#mode2').hide();
+                    $('#mode3').hide();
+                    $('#mode' + i).show();
+                    mode = i - 1;
+                    togglePanel();
+                }
+
+
+                configureControls();
+
+                /* Canvas */
+                stage = new cjs.Stage(canvas);
+                var container1 = new cjs.Container();
+                container1.tween = cjs.Tween.get(container1);
+                container1.mouseEventsEnabled = false;
+                worker1 = wordCloud(container1, cjs, {
+                    sizeW: 1600,
+                    sizeH: 1200,
+                    defaultMaxSize: 50,
+                    removeCount: 16,
+                    concurrentRemoveCount: 16,
+                    rotationMode: 0,
+                    speed: 500,
+                    defaultWordSize : 50,
+                    defaultTweetSize : 18,
+                    defaultImageSize: 180,
+                    insertEffect: { tweet: false, word: false, image: false },
+                    gotoEffect: { tweet: false, word: false, image: false },
+                    presetAlpha: { tweet: false, word: true, image: false },
+                    resetShadowAfterInsert: { tweet: false, word: false, image: false },
+                    resetShadowColor: { tweet: "#fff", word: "#fff", image: "#fff" },
+                    shadowColor: { tweet: "#fff", word: "#f00", image: "#fff" },
+                    fontColor: { tweet: "#fff", word: "#f00", image: "#fff" },
+                    shadowSize: { tweet: 35, word: 35, image: 15 },
+                    useCache: true,
+                    effectSpeedRatio : 1,
+                });               
+
+                var container2 = new cjs.Container();
+                container2.tween = cjs.Tween.get(container2);
+                container2.mouseEventsEnabled = false;
+                worker2 = wordCloud(container2, cjs, {
+                    sizeW: 1600,
+                    sizeH: 1200,
+                    defaultMaxSize: 30,
+                    removeCount: 16,
+                    concurrentRemoveCount: 16,
+                    rotationMode: 1,
+                    speed: 1000,
+                    effectAfterNIdles: 5,
+                    effectAfterNInsert: 8,
+                    defaultWordSize: 30,
+                    defaultTweetSize: 18,
+                    defaultImageSize: 180,
+                    insertEffect: { tweet: true, word: true, image: true },
+                    gotoEffect: { tweet: true, word: true, image: true },
+                    presetAlpha: { tweet: false, word: false, image: false },
+                    resetShadowAfterInsert: { tweet: true, word: false, image: true },
+                    resetShadowColor: { tweet: "#999", word: "#fff", image: "#999" },
+                    shadowColor: { tweet: "#fff", word: "#fff", image: "#fff" },
+                    fontColor: { tweet: "#fff", word: "#fff", image: "#fff" },
+                    shadowSize: { tweet: 35, word: 25, image: 15 },
+                    effectSpeedRatio: 1,
+                    useCache: false,
+                });
+                
+                var container3 = new cjs.Container();
+                container3.tween = cjs.Tween.get(container3);
+                container3.mouseEventsEnabled = false;
+                worker3 = picWall(container3, cjs, {
+                    sizeW: 1600,
+                    sizeH: 1200,
+                    speed: 150,
+                    pictureAlpha : 0.5,
+                });
+                
+                
+                var container4 = new cjs.Container();
+                container4.tween = cjs.Tween.get(container4);
+                container4.mouseEventsEnabled = false;
+                worker4 = wordCloud(container4, cjs, {
+                    sizeW: 1600,
+                    sizeH: 1200,
+                    defaultMaxSize: 30,
+                    removeCount: 16,
+                    concurrentRemoveCount: 16,
+                    rotationMode: 1,
+                    speed: 1000,
+                    effectAfterNIdles: 5,
+                    effectAfterNInsert: 8,
+                    defaultWordSize: 14,
+                    defaultTweetSize: 10,
+                    defaultImageSize: 180,
+                    insertEffect : { tweet: true, word: true, image: true },
+                    gotoEffect: { tweet: true, word: true, image: true },
+                    presetAlpha: { tweet: false, word: false, image: false },
+                    resetShadowAfterInsert : { tweet: false, word: false, image: false },
+                    resetShadowColor : { tweet: "#999", word: "#999", image: "#999" },
+                    shadowColor: { tweet: "#f00", word: "#f00", image: "#f00" },
+                    fontColor: { tweet: "#fff", word: "#fff", image: "#fff" },
+                    shadowSize: { tweet: 40, word: 40, image: 15 },
+                    effectSpeedRatio: 1,
+                    useCache: false,
+                });
+                
+                var container5 = new cjs.Container();
+                container5.tween = cjs.Tween.get(container5);
+                container5.mouseEventsEnabled = false;
+                worker5 = wordCloud(container5, cjs, {
+                    sizeW: 1600,
+                    sizeH: 1200,
+                    defaultMaxSize: 30,
+                    removeCount: 16,
+                    concurrentRemoveCount: 16,
+                    rotationMode: 2,
+                    speed: 500,
+                    effectAfterNIdles: -1,
+                    effectAfterNInsert: -1,
+                    defaultWordSize: 34,
+                    defaultTweetSize: 14,
+                    defaultImageSize: 120,
+                    useCache: true,
+                    insertEffect: { tweet: true, word: false, image: true },
+                    gotoEffect: { tweet: false, word: false, image: false },
+                    presetAlpha: { tweet: false, word: false, image: false },
+                    resetShadowAfterInsert: { tweet: false, word: false, image: false },
+                    resetShadowColor: { tweet: "#fff", word: "#fff", image: "#fff" },
+                    shadowColor: { tweet: "#fff", word: "#fff", image: "#fff" },
+                    fontColor: { tweet: "#333", word: "#333", image: "#333" },
+                    shadowSize: { tweet: 10, word: 20, image: 10 },
+                    effectSpeedRatio: 1.5,
+                });
+                
+                /*
+                can use this for debugging
+                worker5.dataSource.push({ type: "word", content: "php", size: 2, id: "php", color: "red", dateTime: new Date(), promoted: false });
+                worker5.dataSource.push({ type: "word", content: "learning", size: 1, id: "learning", color: "red", dateTime: new Date(), promoted: false });
+                worker5.dataSource.push({ type: "word", content: "love", size: 1, id: "love", color: "red", dateTime: new Date(), promoted: false });
+                worker5.dataSource.push({ type: "word", content: "Azure", size: 50, id: "Azure", color: "red", dateTime: new Date(), promoted: false });
+                worker5.dataSource.push({ type: "word", content: "intense", size: 1, id: "intense", color: "red", dateTime: new Date(), promoted: false });
+                worker5.dataSource.push({ type: "word", content: "Montreal", size: 2, id: "Montreal", color: "red", dateTime: new Date(), promoted: false });
+                worker5.dataSource.push({ type: "word", content: "Conference", size: 1, id: "Conference", color: "red", dateTime: new Date(), promoted: false });
+                */
+                
+                stage.addChild(container1);
+                stage.addChild(container2);
+                stage.addChild(container3);
+                stage.addChild(container4);
+                stage.addChild(container5);
+
+                preloader = new cjs.LoadQueue(false);
+                preloader.onComplete = handleComplete;
+                preloader.onFileLoad = handleFileLoad;
+                preloader.loadManifest(manifest);
+
+                cjs.Ticker.useRAF = true;
+                cjs.Ticker.setFPS(60);
+                cjs.Ticker.addListener(stage);
+            }
+
+            function handleProgress() {
+            }
+
+            function handleComplete() {
+                //setupMask(0);
+                worker1.chooseMask(1);
+                worker2.chooseMask(0);
+                worker3.chooseMask(0);
+                worker4.chooseMask(0);
+                worker5.chooseMask(2);
+                setInterval(function () { fps(cjs.Ticker.getMeasuredFPS()); }, 500);
+                
+                resizeCanvas();
+                switchMode(mode);
+                
+                // Uncomment this for debug using Twitter directly
+                // getTweets();
+            }
+            
+            function start() {
+                if (mode == 0) {
+                    // read from queue
+                    setTimeout(function () {
+                        worker1.stop = false;
+                        worker1.run();
+                    }, 1000);
+                    setTimeout(function () {
+                        worker2.stop = false;
+                        worker2.run();
+                    }, 5000);
+                }
+                else if (mode == 1) {
+                    // read from queue
+                    setTimeout(function () {
+                        worker3.stop = false;
+                        worker3.run();
+                    }, 1000);
+                    setTimeout(function () {
+                        worker4.stop = false;
+                        worker4.run();
+                    }, 5000);
+                } else if (mode == 2) {
+                    setTimeout(function () {
+                        worker5.stop = false;
+                        worker5.run();
+                    }, 1000);
+
+                }
+            }
+            function switchMode(n) {
+                mode = n;
+                if (mode == 0) {
+                    worker3.terminate();
+                    worker4.terminate();
+                    worker5.terminate();
+                    $('#mode1').show();
+                    $('#mode2').hide();
+                    $('#mode3').hide();
+                } else if (mode == 1) {
+                    worker1.terminate();
+                    worker2.terminate();
+                    worker5.terminate();
+                    $('#mode1').hide();
+                    $('#mode2').show();
+                    $('#mode3').hide();
+
+                    var images = [
+                        "http://renoirboulanger.com/wp-content/uploads/2010/09/4463325427_251399c227.jpg", "http://farm6.staticflickr.com/5264/5660962890_26d5f48850_z.jpg", "http://blog.gotoohlala.com/wp-content/uploads/2012/03/Blog-Montreal2.jpg",
+                        "http://www.webnotwar.ca/wp-content/uploads/2012/02/MWNW-@-CONFOO.jpg", "http://distilleryimage6.s3.amazonaws.com/832b93127f8411e2a42922000a9e51c4_6.jpg", "http://distilleryimage6.s3.amazonaws.com/5060e6b07dbf11e281d822000a1f9682_6.jpg", "http://distilleryimage6.s3.amazonaws.com/bfa9299c811111e2b8e822000a1fbcc7_6.jpg", "http://distilleryimage9.s3.amazonaws.com/6e4368b0811111e2adfe22000a1fbd6c_6.jpg", "http://distilleryimage7.s3.amazonaws.com/43a5ce18811111e2a7f322000a1f9a55_6.jpg", "http://distilleryimage7.s3.amazonaws.com/5d22e9e2810d11e2b3af22000a1fb856_6.jpg", "http://distilleryimage1.s3.amazonaws.com/259f5744811211e284fa22000a1f9c87_6.jpg",
+                        "http://distilleryimage11.s3.amazonaws.com/cb23c44281a911e2b82c22000a1fbca3_6.jpg", "http://distilleryimage10.s3.amazonaws.com/25c579dc81a911e2895222000aaa0568_6.jpg", "http://distilleryimage10.s3.amazonaws.com/5594247a81a811e2b07922000a1fbd9b_6.jpg", "http://distilleryimage4.s3.amazonaws.com/9e36e8e281a911e2a1c622000a1fbcae_6.jpg", "http://distilleryimage3.s3.amazonaws.com/88c410e8806911e2996722000a9f18fe_6.jpg", "http://pbs.twimg.com/media/BD_CYzsCQAEHOrD.jpg",
+                        "http://pbs.twimg.com/media/BEIpLuXCEAAC1Mb.jpg", "http://pbs.twimg.com/media/BEMZ3hSCYAAkijq.jpg", "http://pbs.twimg.com/media/BEHd6bwCYAINl2v.jpg", "http://farm9.staticflickr.com/8527/8513883136_4fa0243e10_b.jpg", "http://pbs.twimg.com/media/BEHEdfyCUAAjMtY.jpg", "http://farm9.staticflickr.com/8527/8513214315_f198dbf095_b.jpg", "http://pbs.twimg.com/media/BEHBzVyCMAE084b.jpg", "http://pbs.twimg.com/media/BD9X8QfCMAAopHa.jpg", "http://pbs.twimg.com/media/BEID_GaCUAAH4Df.jpg",
+                        "http://renoirboulanger.com/wp-content/uploads/2010/09/4463325427_251399c227.jpg", "http://farm6.staticflickr.com/5264/5660962890_26d5f48850_z.jpg", "http://blog.gotoohlala.com/wp-content/uploads/2012/03/Blog-Montreal2.jpg",
+                        "http://www.webnotwar.ca/wp-content/uploads/2012/02/MWNW-@-CONFOO.jpg", "http://distilleryimage6.s3.amazonaws.com/832b93127f8411e2a42922000a9e51c4_6.jpg", "http://distilleryimage6.s3.amazonaws.com/5060e6b07dbf11e281d822000a1f9682_6.jpg", "http://distilleryimage6.s3.amazonaws.com/bfa9299c811111e2b8e822000a1fbcc7_6.jpg", "http://distilleryimage9.s3.amazonaws.com/6e4368b0811111e2adfe22000a1fbd6c_6.jpg", "http://distilleryimage7.s3.amazonaws.com/43a5ce18811111e2a7f322000a1f9a55_6.jpg", "http://distilleryimage7.s3.amazonaws.com/5d22e9e2810d11e2b3af22000a1fb856_6.jpg", "http://distilleryimage1.s3.amazonaws.com/259f5744811211e284fa22000a1f9c87_6.jpg",
+                        "http://distilleryimage11.s3.amazonaws.com/cb23c44281a911e2b82c22000a1fbca3_6.jpg", "http://distilleryimage10.s3.amazonaws.com/25c579dc81a911e2895222000aaa0568_6.jpg", "http://distilleryimage10.s3.amazonaws.com/5594247a81a811e2b07922000a1fbd9b_6.jpg", "http://distilleryimage4.s3.amazonaws.com/9e36e8e281a911e2a1c622000a1fbcae_6.jpg", "http://distilleryimage3.s3.amazonaws.com/88c410e8806911e2996722000a9f18fe_6.jpg", "http://pbs.twimg.com/media/BD_CYzsCQAEHOrD.jpg",
+                        "http://pbs.twimg.com/media/BEIpLuXCEAAC1Mb.jpg", "http://pbs.twimg.com/media/BEMZ3hSCYAAkijq.jpg", "http://pbs.twimg.com/media/BEHd6bwCYAINl2v.jpg", "http://farm9.staticflickr.com/8527/8513883136_4fa0243e10_b.jpg", "http://pbs.twimg.com/media/BEHEdfyCUAAjMtY.jpg", "http://farm9.staticflickr.com/8527/8513214315_f198dbf095_b.jpg", "http://pbs.twimg.com/media/BEHBzVyCMAE084b.jpg", "http://pbs.twimg.com/media/BD9X8QfCMAAopHa.jpg", "http://pbs.twimg.com/media/BEID_GaCUAAH4Df.jpg"
+                    ];
+
+                    for (var i in images) {
+                        (function () {
+                            var item = { type: "image", content: images[i], size: 1, id: "_i" + i, dateTime: new Date(), authorName: ".", authorImage: images[i] };
+                            item.image = new Image();
+                            item.image.onload = function () {
+                                worker3.dataSource.splice(randomRange(0, worker3.dataSource.length - 1), 0, item);
+                            };
+                            item.image.src = images[i];
+                        })();
+                    }
+                }
+                else {
+                    $('#mode1').hide();
+                    $('#mode2').hide();
+                    $('#mode3').show();
+
+                    worker1.terminate();
+                    worker2.terminate();
+                    worker3.terminate();
+                    worker4.terminate();                                        
+                    worker5.setBg(bg[0]);
+                }
+                start();
+            }
+
+            function configureControls() {
+                // update controls               
+                canvas = document.getElementById('canvas');
+                canvas.width = sizeW;
+                canvas.height = sizeH;
+            }
+
+            function setupMask(m) {
+                var defer = new $.Deferred();
+
+                for (var index in bg) {
+                    if (bg[index].alpha == 1) {
+                        cjs.Tween.get(bg[index]).to({ alpha: 0 }, 2000);
+                    }
+                }
+
+                cjs.Tween.get(bg[m]).to({ alpha: 1 }, 2000).call(function () { defer.resolve(); });
+
+                return defer;
+            }
+
+            function handleFileLoad(event) {
+                //triggered when an individual file completes loading
+                switch (event.item.type) {
+                case cjs.LoadQueue.IMAGE:
+                    //image loaded
+                    if (event.item.data.mask) {
+                        var canvas = $("<canvas width='" + sizeW + "' height='" + sizeH + "'></canvas>");
+                        var ctx = canvas[0].getContext("2d");
+                        var image = new Image();
+                        image.src = event.item.src;
+                        var bitmap = new cjs.Bitmap(event.result);
+                        ctx.drawImage(bitmap.image, 0, 0, sizeW, sizeH);
+                        var imageData = ctx.getImageData(0, 0, sizeW, sizeH);
+                        var maskbits = [];
+                        for (var i = 0; i < imageData.data.length; i += 4) {
+                            maskbits.push(imageData.data[i] / 255);
+                        }
+                        worker1.addMask(maskbits);
+                        worker2.addMask(maskbits);
+                        worker3.addMask(maskbits);
+                        worker4.addMask(maskbits);
+                        worker5.addMask(maskbits);
+                    }
+                    else {
+                        var img = new Image();
+                        img.src = event.item.src;
+                        var bmp = new cjs.Bitmap(event.result);
+                        bmp.id = event.item.id;
+                        bmp.alpha = 1;
+                        bmp.scaleX = sizeW / bmp.image.width;
+                        bmp.scaleY = sizeH / bmp.image.height;
+                        bg.push(bmp);
+                        //workerFront.stage.addChild(bmp);
+                        //worker.stage.addChild(bmp);
+                    }
+                    break;
+                case cjs.LoadQueue.SOUND:
+                    //sound loaded
+                    break;
+                }
+            }                                  
+
+
+            var socket = io.connect(dataSourceUrl);
+
+            
+            function fps(t) {
+                if (controlShow)
+                    $('#fps').html("fps: " + t);
+                else {
+                    $('#fps').html('');
+                }
+            }
+
+            function getTweets() {
+                $.ajax({
+                    type: "GET",
+                    url: "http://search.twitter.com/search.json?",
+                    dataType: "jsonp",
+                    data: {
+                        q: 'leafs',
+                        include_entities: "true",
+                        rpp: 25,
+                        show_user: false,
+                        result_type: "recent",
+                        since_id: sinceId,
+                    },
+                    error: function () {
+                        //alert('error...');
+                    },
+                    success: function (d) {
+                        sinceId = d.max_id;
+                        if (d.results.length == 0)
+                            sinceId = undefined;
+                        for (var i in d.results) {   
+
+                            var data = d.results[i];
+                            if (data.entities && data.entities.hashtags.length > 0) {
+                                for (var hindex in data.entities.hashtags) {
+                                    var word = { type: "word", content: data.entities.hashtags[hindex].text, size: 1, id: "_t" + data.entities.hashtags[hindex].text, color: randomColor(), dateTime: new Date() };
+                                    insertWord(word, false);
+                                    trace("word: " + word.content + " id " + word.id + "\n");
+                                }
+                            }
+                            if (data.entities && data.entities.media && data.entities.media[0].type == 'photo') {
+                                var item = {
+                                    type: "image",
+                                    content: data.entities.media[0].media_url,
+                                    size: 1,
+                                    id: data.id,
+                                    color: randomColor(),
+                                    dateTime: new Date(data.created_at),
+                                    authorName: data.from_user,
+                                    authorImage: data.profile_image_url
+                                };
+                                item.image = new Image();
+                                item.image.onload = function () {
+                                    insertImage(item, false);
+                                };
+                                item.image.src = data.entities.media[0].media_url + ":medium";
+                                item.aimage = new Image();
+                                item.aimage.src = data.profile_image_url;
+                                trace("Image: " + item.image.src + " id " + data.id + "\n");
+                            } else {
+                                var tweet = { type: "tweet", content: cleanText(data.text), size: 1, id: data.id, color: "#fff", dateTime: new Date(data.created_at), authorName: data.from_user, authorImage: data.profile_image_url };
+                                tweet.aimage = new Image();
+                                tweet.aimage.src = data.profile_image_url;
+                                insertTweet(tweet, false);
+                                trace("Tweet: " + tweet.content + " id " + data.id + "\n");
+                            }
+                        }
+                    }
+                });
+            }
+
+            function insertImage (item, remove) {
+                if (remove) {
+                    if (mode == 0)
+                        worker2.dataSource.unshift(item);
+                    else if (mode == 1)
+                        worker3.dataSource.unshift(item);
+                    else
+                        worker5.dataSource.unshift(item);
+                } else {
+                    if (mode == 0)
+                        worker2.dataSource.push(item);
+                    else if (mode == 1)
+                        worker3.dataSource.push(item);
+                    else
+                        worker5.dataSource.push(item);
+                }
+            }
+            function insertTweet(tweet, remove) {
+                if (remove) {
+                    if (mode == 0)
+                        worker2.dataSource.unshift(tweet);
+                    else if (mode == 1)
+                        worker4.dataSource.unshift(tweet);
+                    else
+                        worker5.dataSource.unshift(tweet);
+
+                } else {
+                    if (mode == 0)
+                        worker2.dataSource.push(tweet);
+                    else if (mode == 1)
+                        worker4.dataSource.push(tweet);
+                    else
+                        worker5.dataSource.push(tweet);
+                }
+            }
+            function insertWord(word, remove) {                
+                if (remove) {
+                    if (mode == 0)
+                        worker1.dataSource.unshift(word);
+                    else if (mode == 1)
+                        worker4.dataSource.unshift(word);
+                    else
+                        worker5.dataSource.unshift(word);
+
+                } else {
+                    if (mode == 0)
+                        worker1.dataSource.push(word);
+                    else if (mode == 1)
+                        worker4.dataSource.push(word);
+                    else
+                        worker5.dataSource.push(word);
+
+                }
+            }
+
+            // Data Access via socket.io
+            socket.on('fromServer', function (data) {
+                if (useDataSource) {
+                    if (typeof (data.message) == 'string')
+                        return;
+
+                    var message = data.message;
+                    if ($('#cbRandomColor').is(':checked')) {
+                        message.colour = "#fff";
+                    }
+                    if (message.type == "image") {
+                        var item = { type: "image", content: message.content.replace(/\\\//g, "/"), size: message.size, id: message.id, color: message.colour, dateTime: new Date(message.datetime), authorName: message.authorname, authorImage: message.authorprofileurl.replace(/\\\//g, "/") };
+                        item.image = new Image();
+                        item.image.onload = function () {
+                            insertImage(item, message.size == 0);
+                        };
+                        item.aimage = new Image();
+                        item.aimage.src = item.authorImage;
+                        item.image.src = message.content.replace(/\\\//g, "/");
+
+                        trace("Image: " + item.image.src + " id " + message.id + "\n");
+                    } else if (message.type == "tweet") {
+                        var tweet = { type: "tweet", content: cleanText(message.content), size: message.size, id: message.id, color: message.colour, dateTime: new Date(message.datetime), authorName: message.authorname, authorImage: message.authorprofileurl.replace(/\\\//g, "/") };
+
+                        insertTweet(tweet, message.size == 0);
+
+                        tweet.aimage = new Image();
+                        tweet.aimage.src = tweet.authorImage;
+
+                        trace("Tweet: " + message.content + " id " + message.id + "\n");
+                    } else if (message.type == "word") {
+                        var word = { type: "word", content: cleanText(message.content), size: message.size, id: message.id, color: message.colour, dateTime: message.datetime };
+
+                        insertWord(word, message.size == 0);
+
+                        trace("Word: " + message.content + " id " + message.id + "\n");                        
+                    }
+                }
+            });
+            
+
+
+
+            // Resize windows
+            $(window).resize(resizeCanvas);
+            function resizeCanvas() {
+                var w = $(window).width();
+                var h = $(window).height();
+                if (w * 0.75 < h) { // 1000 1000
+                    $(canvas).width(w);
+                    $(canvas).height(w * 0.75);
+                }
+                else { // 2000 1000
+                    $(canvas).width(h / 0.75);
+                    $(canvas).height(h);
+                }
+            }
+            function togglePanel() {
+                if (controlShow) {
+                    $("#controls").hide();
+                    controlShow = false;
+                }
+                else {
+                    $("#controls").show();
+                    controlShow = true;
+                }
+            }
+            
+            function update(mode) {
+                if (mode == 0) {
+                    worker1.updateOptions({
+                        rotationMode: $('#m1_rotationbg').val(),
+                        speed: $('#m1_speedbg').val(),
+                        insertEffect: { tweet: $('#m1_effbg').is(":checked"), word: $('#m1_effbg').is(":checked"), image: $('#m1_effbg').is(":checked") },
+                        shadowColor: { tweet: $('#m1_colorbg').val(), word: $('#m1_colorbg').val(), image: $('#m1_colorbg').val() },
+                        resetShadowColor: { tweet: $('#m1_colorbg').val(), word: $('#m1_colorbg').val(), image: $('#m1_colorbg').val() },
+                        fontColor: { tweet: $('#m1_colorbg').val(), word: $('#m1_colorbg').val(), image: $('#m1_colorbg').val() },                        
+                        useCache: $('#m1_cachefg').is(":checked"),
+                        effectSpeedRatio: $('#m1_speedratio').val(),
+                    });
+                    worker2.updateOptions({                        
+                        rotationMode: $('#m1_rotationfg').val(),
+                        speed: $('#m1_speedfg').val(),
+                        insertEffect: { tweet: $('#m1_efffg').is(":checked"), word: $('#m1_efffg').is(":checked"), image: $('#m1_efffg').is(":checked") },
+                        shadowColor: { tweet: $('#m1_colorfg').val(), word: $('#m1_colorfg').val(), image: $('#m1_colorfg').val() },
+                        resetShadowColor: { tweet: $('#m1_colorfg').val(), word: $('#m1_colorfg').val(), image: $('#m1_colorfg').val() },
+                        fontColor: { tweet: $('#m1_colorfg').val(), word: $('#m1_colorfg').val(), image: $('#m1_colorfg').val() },
+                        useCache: $('#m1_cachefg').is(":checked"),
+                        effectSpeedRatio: $('#m1_speedratio').val(),
+                    });
+
+                }
+                else if (mode == 1) {
+                    worker4.updateOptions({
+                        rotationMode: $('#m2_rotation').val(),
+                        speed: $('#m2_speed').val(),
+                        insertEffect: { tweet: $('#m2_eff').is(":checked"), word: false, image: $('#m2_eff').is(":checked") },
+                        fontColor: { tweet: $('#m2_color').val(), word: $('#m2_color').val(), image: $('#m2_color').val() },
+                        shadowColor: { tweet: $('#m2_shadow').val(), word: $('#m2_shadow').val(), image: $('#m2_shadow').val() },
+                        useCache: $('#m2_cache').is(":checked"),
+                        effectSpeedRatio: $('#m2_speedratio').val(),
+                    });
+                }
+                else if (mode == 2) {
+                    worker5.updateOptions({
+                        rotationMode: $('#m3_rotation').val(),
+                        speed: $('#m3_speed').val(),
+                        insertEffect: { tweet: $('#m3_eff').is(":checked"), word: false, image: $('#m3_eff').is(":checked") },
+                        fontColor: { tweet: $('#m3_color').val(), word: $('#m3_color').val(), image: $('#m3_color').val() },
+                        shadowColor: { tweet: $('#m3_shadow').val(), word: $('#m3_shadow').val(), image: $('#m3_shadow').val() },
+                        useCache: $('#m3_cache').is(":checked"),
+                        effectSpeedRatio: $('#m3_speedratio').val(),
+                    });
+                }
+            }
+            
+            function reset() {
+                if (mode == 0) {
+                    worker1.terminate();
+                    worker2.terminate();
+                    start();
+                }
+                else if (mode == 1) {
+                    worker3.terminate();
+                    worker4.terminate();
+                    start();
+                }
+                else if (mode == 2) {
+                    worker5.terminate();
+                    start();
+                }
+        }
+            
+            function pause() {
+                if (mode == 0) {
+                    worker1.globalPause = !worker1.globalPause;
+                    worker2.globalPause = !worker2.globalPause;
+                }
+                else if (mode == 1) {
+                    worker3.globalPause = !worker3.globalPause;
+                    worker4.globalPause = !worker3.globalPause;
+                }
+                else if (mode == 2) {
+                    worker5.globalPause = !worker5.globalPause;
+                }
+            }
+
+        </script>
+    </head>    
+    <body onload="main();" style="padding:0;margin:0;text-align: center; background-color:#000;color:#fff;">
+        <canvas id="canvas" width="1200" height="900" style="margin:0 auto;background-color:#000;"></canvas>        
+        <div id="open" onclick="togglePanel()">+</div>
+        <div id="controls" style="display:none; left:0; top:30px;z-index:1000; position:absolute; text-align: left; width:500px;">
+            <div id="fps"></div>        
+            <div><textarea id="output" style="clear:both; font-size:9px;" rows="10" cols="60"></textarea></div> 
+            <div>
+                <button onclick="javascript: switchMode(0);">Mode 1</button>
+                <button onclick="javascript: switchMode(1);">Mode 2</button>
+                <button onclick="javascript: switchMode(2);">Mode 3</button>
+            </div>
+            <div id="mode1" style="font-size:10px;">
+                <strong>Options - Mode 1</strong><br/>
+                Color (back):<input id="m1_colorbg" type="text" value="#f00" />
+                Color (front):<input id="m1_colorfg" type="text" value="#fff" />
+                Speed (back):<input id="m1_speedbg" type="text" value="500" />
+                Speed (front): <input id="m1_speedfg" type="text" value="1500" />
+                Rotation (back):<input id="m1_rotationbg" type="text" value="0" /> 
+                Rotation (front): <input id="m1_rotationfg" type="text" value="1" />
+                <p>rotation: 0 - no, 1 - 90 degree interval, 2 - 45 degree interval</p>
+                Zoom-Out After N insert <input id="m1_aftern" type="text" value="8" /><br/>
+                Use Cache (back) <input id="m1_cachebg" type="checkbox"  checked="checked" /><br/>
+                Use Cache (front) <input id="m1_cachefg" type="checkbox"  /><br/>
+                insert effect (back) <input id="m1_effbg" type="checkbox" /><br/>
+                insert effect (front) <input id="m1_efffg" type="checkbox" checked="checked"  /><br/>
+                Effect Speed Ratio (larger value means slower)<input id="m1_speedratio" type="text" value="1.0"  /><br/>                
+                <button onclick="javascript: update(0);">Update</button>
+                <button onclick="javascript: reset(0);">Reset</button>
+                <button onclick="javascript: pause(0);">Pause</button>                
+            </div>
+            <div id="mode2" style="font-size:10px;display:none;">
+                <strong>Options - Mode 2</strong><br/>
+            
+                Color:<input id="m2_color" type="text" value="#fff" />
+                Shadow:<input id="m2_shadow" type="text" value="#f00" />
+                Speed:<input id="m2_speed" type="text" value="500" />
+                Rotation:<input id="m2_rotation" type="text" value="1" /> 
+                <p>rotation: 0 - no, 1 - 90 degree interval, 2 - 45 degree interval</p>
+                Zoom-Out After N insert <input id="m2_aftern" type="text" value="8" /><br/>
+                Use Cache<input id="m2_cache" type="checkbox" /><br/>
+                insert effect <input id="m2_eff" type="checkbox" checked="checked"  /><br/>
+                Effect Speed Ratio (larger value means slower)<input id="m2_speedratio" type="text" value="1.0"  /><br/> 
+                <button onclick="javascript: update(1);">Update</button>
+                <button onclick="javascript: reset(1);">Reset</button>
+                <button onclick="javascript: pause(1);">Pause</button>                
+            </div>  
+            <div id="mode3" style="font-size:10px;display:none;">
+                <strong>Options - Mode 3</strong><br/>
+                Color:<input id="m3_color" type="text" value="#333" />
+                Shadow:<input id="m3_shadow" type="text" value="#fff" />
+                Speed:<input id="m3_speed" type="text" value="500" />
+                Rotation:<input id="m3_rotation" type="text" value="2" /> 
+                <p>rotation: 0 - no, 1 - 90 degree interval, 2 - 45 degree interval</p>
+                Zoom-Out After N insert <input id="m3_aftern" type="text" value="8" /><br/>
+                Use Cache<input id="m3_cache" type="checkbox" checked="checked" /><br/>
+                insert effect <input id="m3_eff" type="checkbox" checked="checked"  /><br/>
+                Effect Speed Ratio (larger value means slower)<input id="m3_speedratio" type="text" value="1.0"  /><br/>                
+                <button onclick="javascript: update(2);">Update</button>
+                <button onclick="javascript: reset(2);">Reset</button>
+                <button onclick="javascript: pause(2);">Pause</button>                
+            </div>              
+
+            <span style="font-family: Aclonica;visibility: hidden;">L</span>
+            <span style="font-family: 'Permanent Marker';visibility: hidden;">L</span>
+            <span style="font-family: Kavoon;visibility: hidden;">L</span>
+        </div>
+    </body>
+</html>
