@@ -21,6 +21,7 @@ var maxY = Math.ceil(sizeH / sizeI);
 var offsetX = (sizeW % sizeI);
 var offsetY = (sizeH % sizeI);
 
+
 (function () {
     for (var i = 0; i < maxX; i++) {
         grids[i] = [];
@@ -63,7 +64,7 @@ function getNextDir(x, y, dx, dy) {
                 dy = 1;
             }
         }
-        if (Math.random() > 0.5) {
+        if (Math.random() > 0.4) {
             return { dx: dx, dy: 0 };
         } else {
             return { dx: 0, dy: dy };
@@ -108,7 +109,7 @@ self.onmessage = function (e) {
     }
 
     if (e.data.action == 'addMask') {
-        masks.push(e.data.data);
+        //masks.push(e.data.data);
         self.postMessage({ action: 'return', pid: e.data.pid, data: false });
     }
     else if (e.data.action == 'setRotation') {

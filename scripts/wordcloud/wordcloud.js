@@ -1,11 +1,13 @@
 var wordCloud = function (stg, createjs, options) {
     var cjs = createjs;
+    var factor = 1;
+    var percision = 2; // higher = less precise
     var bg;
     var stage = stg;
     var promise = [];
     var items = [];
-    var promiseCounter = 0;    
-    var pause = false;    
+    var promiseCounter = 0;
+    var pause = false;
     var defaultImageSize = 180;
     var defaultTweetSize = 18;
     var defaultWordSize = 30;
@@ -15,7 +17,7 @@ var wordCloud = function (stg, createjs, options) {
     var effectAfterNInserts = -1;
     var insertEffect = { tweet: true, word: true, image: true };
     var gotoEffect = { tweet: true, word: true, image: true };
-    var presetAlpha = { tweet: false, word: true, image: false };
+    var useSizeAlpha = { tweet: false, word: true, image: false };
     var resetShadowAfterInsert = { tweet: true, word: false, image: true };
     var resetShadowColor = { tweet: "#999", word: "#999", image: "#999" };
     var shadowColor = { tweet: "#fff", word: "#fff", image: "#fff" };
@@ -30,19 +32,23 @@ var wordCloud = function (stg, createjs, options) {
     var speed = 1000;
     var useCache = true;
     var effectSpeedRatio = 1;
+    var preload = 0;
+    var preloadComplete = null;
     lastMax = options.defaultMaxSize;
     sizeH = options.sizeH;
     sizeW = options.sizeW;
     removeCount = options.removeCount;
     concurrentRemoveCount = options.concurrentRemoveCount;
-    
+    var osX = 1;
+    var osY = 1;
+
     var setOptions = function (opts) {
         // opts;
         if (opts.rotationMode != undefined)
             rotationMode = opts.rotationMode;
         if (opts.speed != undefined)
             speed = opts.speed;
-        
+
         if (opts.useCache != undefined)
             useCache = opts.useCache;
         if (opts.effectAfterNInserts)
@@ -61,8 +67,8 @@ var wordCloud = function (stg, createjs, options) {
             insertEffect = opts.insertEffect;
         if (opts.gotoEffect)
             gotoEffect = opts.gotoEffect;
-        if (opts.presetAlpha)
-            presetAlpha = opts.presetAlpha;
+        if (opts.useSizeAlpha)
+            useSizeAlpha = opts.useSizeAlpha;
         if (opts.resetShadowColor)
             resetShadowColor = opts.resetShadowColor;
         if (opts.shadowColor)
@@ -73,8 +79,35 @@ var wordCloud = function (stg, createjs, options) {
             fontColor = opts.fontColor;
         if (opts.effectSpeedRatio)
             effectSpeedRatio = opts.effectSpeedRatio;
+        if (opts.preload)
+            preload = opts.preload;
+        if (opts.preloadComplete)
+            preloadComplete = opts.preloadComplete;
+        if (opts.factor)
+            factor = opts.factor;
+
+        sizeW = sizeW * factor;
+        sizeH = sizeH * factor;
+        updateOptions();
     };
-    
+
+    var updateOptions = function () {
+        // colors
+        for (var itemIndex in items) {
+            for (var i in items[itemIndex].content.children) {
+                if (items[itemIndex].content.children[i].color) {
+                    items[itemIndex].content.children[i].color = fontColor[items[itemIndex].type];
+                }
+                if (items[itemIndex].content.children[i].shadow) {
+                    items[itemIndex].content.children[i].shadow.color = shadowColor[items[itemIndex].type];
+                }
+
+                if (useCache)
+                    items[itemIndex].content.updateCache();
+            }
+        }
+    };
+
     setOptions(options);
 
 
@@ -89,48 +122,62 @@ var wordCloud = function (stg, createjs, options) {
         }
     };
     var w = {
-        setRotation: function(d) {
+        setRotation: function (d) {
             promise[promiseCounter] = new $.Deferred();
             worker.postMessage({ action: "setRotation", data: d, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
-        addMask: function(d) {
+        addMask: function (event) {
+            var sw = sizeW /( factor * percision);
+            var sh = sizeH / (factor * percision);
+            var canvas = $("<canvas width='" + sw + "' height='" + sh + "'></canvas>");
+            var ctx = canvas[0].getContext("2d");
+            var image = new Image();
+            image.src = event.item.src;
+            var bitmap = new cjs.Bitmap(event.result);
+            ctx.drawImage(bitmap.image, 0, 0, sw, sh);
+            var imageData = ctx.getImageData(0, 0, sw, sh);
+            var maskbits = [];
+            for (var i = 0; i < imageData.data.length; i += 4) {
+                maskbits.push(imageData.data[i] / 255);
+            }
+            
             promise[promiseCounter] = new $.Deferred();
-            worker.postMessage({ action: "addMask", data: d, pid: promiseCounter });
+            worker.postMessage({ action: "addMask", data: maskbits, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
-        chooseMask: function(d) {
+        chooseMask: function (d) {
             promise[promiseCounter] = new $.Deferred();
             worker.postMessage({ action: "chooseMask", data: d, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
-        insertShape: function(id, p) {
+        insertShape: function (id, p) {
             promise[promiseCounter] = new $.Deferred();
             worker.postMessage({ action: "insertShape", data: { position: p.position, w: p.w, h: p.h, rotation: p.rotation }, id: id, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
-        removeShape: function(id) {
+        removeShape: function (id) {
             promise[promiseCounter] = new $.Deferred();
             worker.postMessage({ action: "removeShape", id: id, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
-        clearShapes: function() {
+        clearShapes: function () {
             promise[promiseCounter] = new $.Deferred();
             worker.postMessage({ action: "clearShapes", pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
-        fitCollisionShape: function(p) {
+        fitCollisionShape: function (p) {
             promise[promiseCounter] = new $.Deferred();
             worker.postMessage({ action: "fitCollisionShape", data: { position: p.position, w: p.w, h: p.h, rotation: p.rotation }, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
         setSize: function (p) {
             promise[promiseCounter] = new $.Deferred();
-            worker.postMessage({ action: "setSize", data: { w: p.w, h: p.h }, pid: promiseCounter });
+            worker.postMessage({ action: "setSize", data: { w: p.w, h: p.h, f: p.f }, pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
     };
-    w.setSize({ w: sizeW, h: sizeH });
+    w.setSize({ w: sizeW, h: sizeH, f: factor * percision });
     w.setRotation(rotationMode);
 
     var effFly = function (item, defer) {
@@ -146,7 +193,7 @@ var wordCloud = function (stg, createjs, options) {
             defer.resolve();
         });
     };
-    var effFade = function(item, defer) {
+    var effFade = function (item, defer) {
         var content = item.content;
         var tween = cjs.Tween.get(content);
         var osx = item.content.scaleX;
@@ -157,7 +204,7 @@ var wordCloud = function (stg, createjs, options) {
             defer.resolve();
         });
     };
-    var effGrow = function(item, defer) {
+    var effGrow = function (item, defer) {
         var content = item.content;
         var tween = cjs.Tween.get(content);
         var osx = item.content.scaleX;
@@ -168,8 +215,8 @@ var wordCloud = function (stg, createjs, options) {
         tween.to({ alpha: 1, scaleX: osx, scaleY: osy, x: item.collisionShape.position.x, y: item.collisionShape.position.y }, 2000 * effectSpeedRatio, cjs.Ease.backInOut).call(function () {
             defer.resolve();
         });
-    };    
-    var effGoto = function(item, defer, gotoEff, insertEff) {
+    };
+    var effGoto = function (item, defer, gotoEff, insertEff) {
         var content = item.content;
         var effects = [];
         if (insertEff) {
@@ -181,20 +228,23 @@ var wordCloud = function (stg, createjs, options) {
 
         var s = cjs.Tween.get(stage);
 
-        var sX = sizeW / 2 + randomRange(-10, 10);
-        var sY = sizeH / 2 + randomRange(-10, 10);
-        var p = Math.random();
+        var sX = (sizeW / factor) / 2 + randomRange(-10, 10);
+        var sY = (sizeH / factor) / 2 + randomRange(-10, 10);
+        var p = Math.random() * 0;
         if (gotoEff) {
-            s.to({ regX: item.collisionShape.position.x, regY: item.collisionShape.position.y, x: sX, y: sY, scaleX: 2 + p, scaleY: 2 + p, rotation: -content.rotation }, 4000 * effectSpeedRatio, cjs.Ease.backOut).call(function() {
+            s.to({ regX: item.collisionShape.position.x, regY: item.collisionShape.position.y, x: sX, y: sY, scaleX: 1, scaleY: 1, rotation: -content.rotation }, 4000 * effectSpeedRatio, cjs.Ease.backOut).call(function () {
+                //s.to({ regX: (sizeW) / 2, regY: (sizeH) / 2, x: (sizeW/factor) / 2, y: (sizeH/factor) / 2, scaleX: 1, scaleY: 1, rotation: 0 }, 4000 * effectSpeedRatio, cjs.Ease.backOut).call(function () {
                 var d = new $.Deferred();
                 if (effects.length > 0)
                     effects[randomRange(0, effects.length - 1)](item, d);
-            }).wait(6000 * effectSpeedRatio).call(function() {
+            }).wait(6000 * effectSpeedRatio).call(function () {
                 pause = false;
                 defer.resolve();
             });
         }
         else {
+            s.to({ regX: sizeW / 2, regY: sizeH / 2, x: (sizeW / factor) / 2, y: (sizeH / factor) / 2, scaleX: 1 / factor, scaleY: 1 / factor, rotation: 0 });
+                
             if (effects.length > 0) {
                 var d = new $.Deferred();
                 effects[randomRange(0, effects.length - 1)](item, d);
@@ -209,31 +259,51 @@ var wordCloud = function (stg, createjs, options) {
             }
         }
     };
-    var effZoomOut = function(defer) {
-        var s = cjs.Tween.get(stage);            
+    var effZoomOut = function (defer) {
+        var s = cjs.Tween.get(stage);
         pause = true;
-        s.to({ regX: sizeW / 2, regY: sizeH / 2, x: sizeW / 2, y: sizeH / 2, scaleX: 1, scaleY: 1, rotation: 0 }, 3000 * effectSpeedRatio, cjs.Ease.backInOut)
+        s.to({ regX: sizeW / 2, regY: sizeH / 2, x: (sizeW / factor) / 2, y: (sizeH / factor) / 2, scaleX: 1 / factor * 0.8, scaleY: 1 / factor * 0.8, rotation: 0 }, 3000 * effectSpeedRatio, cjs.Ease.backInOut)
             .wait(4000 * effectSpeedRatio).call(function () {
                 pause = false;
                 defer.resolve();
             });
     };
-    var effZoomInOut = function(defer) {
+    var effZoomInOut = function (defer) {
         var s = cjs.Tween.get(stage);
         if (items.length == 0) {
             defer.resolve();
             return;
         }
+        var sX = (sizeW / factor) / 2;
+        var sY = (sizeH / factor) / 2;
         var item = items[randomRange(0, items.length - 1)];
+
+        for (var i in item.content.children) {
+            item.content.children[i].color = fontColor[item.type];
+            item.content.children[i].shadow = new cjs.Shadow(shadowColor[item.type], 2, 2, shadowSize[item.type]);
+            if (useCache)
+                item.content.updateCache();
+        }
+
         pause = true;
-        s.to({ regX: item.collisionShape.position.x, regY: item.collisionShape.position.y, x: sizeW / 2, y: sizeH / 2, scaleX: 2.5, scaleY: 2.5, rotation: -item.content.rotation }, 4000 * effectSpeedRatio, cjs.Ease.backInOut)
-            .wait(6000 * effectSpeedRatio).to({ regX: sizeW / 2, regY: sizeH / 2, x: sizeW / 2, y: sizeH / 2, scaleX: 1, scaleY: 1, rotation: 0 }, 4000 * effectSpeedRatio, cjs.Ease.backInOut)
+        s.to({ regX: item.collisionShape.position.x, regY: item.collisionShape.position.y, x: sX, y: sY, scaleX: 1, scaleY: 1, rotation: -item.content.rotation }, 4000 * effectSpeedRatio, cjs.Ease.backInOut)
+            .wait(8000 * effectSpeedRatio).to({ regX: sizeW / 2, regY: sizeH / 2, x: sizeW / factor / 2, y: sizeH / factor / 2, scaleX: 1 / factor * 0.8, scaleY: 1 / factor * 0.8, rotation: 0 }, 4000 * effectSpeedRatio, cjs.Ease.backInOut)
             .wait(6000 * effectSpeedRatio).call(function () {
                 pause = false;
                 defer.resolve();
+
+                for (var i in item.content.children) {
+                    if (item.content.children[i].color) {
+                        item.content.children[i].color = resetShadowColor[items[itemIndex].type];
+                    }
+                    if (item.content.children[i].shadow)
+                        item.content.children[i].shadow = null;
+                    if (useCache)
+                        item.content.updateCache();
+                }
             });
     };
-    var resetShadow = function () {        
+    var resetShadow = function () {
         for (var itemIndex in items) {
             if (resetShadowAfterInsert[items[itemIndex].type]) {
                 for (var i in items[itemIndex].content.children) {
@@ -242,38 +312,50 @@ var wordCloud = function (stg, createjs, options) {
                     }
                     if (items[itemIndex].content.children[i].shadow)
                         items[itemIndex].content.children[i].shadow = null;
-
+                    if (useCache)
+                        items[itemIndex].content.updateCache();
                 }
             }
         }
     };
-    var getAlpha = function(s) {
+    var getAlpha = function (s) {
         if (s.promoted)
             return 0.7;
 
-        if (s.size > lastMax)
-            lastMax = s.size;
+        if (s.size > lastMax) {
+            s.size = lastMax;
+        }
 
-        var alpha = 0.30 + (s.size / lastMax) * 0.30;
+        var alpha = 0.10 + (s.size / lastMax) * 0.50;
         return alpha;
     };
-    
 
     var instance = {
         terminate: function () {
             instance.stop = true;
+            while (items.length > 0) {
+                var i = items.pop();
+                stage.removeChild(i.content);
+                w.removeShape(i.id);
+            }
+            while (instance.dataSource.length > 0) {
+                instance.dataSource.pop();
+            }
+            if (bg)
+                stage.removeChild(bg);
+            return;
         },
         stop: false,
         globalPause: false,
-        dataSource: [],        
-        run: function () {
+        dataSource: [],
+        run: function (callback) {
             if (pause) {
-                setTimeout(function () { instance.run(); }, 1000);
+                callback();
                 return;
             }
 
             if (instance.globalPause) {
-                setTimeout(function () { instance.run(); }, 1000);
+                callback();
                 return;
             }
 
@@ -284,13 +366,11 @@ var wordCloud = function (stg, createjs, options) {
                     stage.removeChild(i.content);
                     w.removeShape(i.id);
                 }
-                while (instance.dataSource.length > 0) {
-                    instance.dataSource.pop();
-                }
                 if (bg)
                     stage.removeChild(bg);
                 return;
             }
+
 
             if (effectAfterNInserts > 0 && insertCount > effectAfterNInserts) {
                 idleCount = 0;
@@ -298,8 +378,8 @@ var wordCloud = function (stg, createjs, options) {
                 idleCount++;
                 var defer = new $.Deferred();
                 effZoomOut(defer);
-                $.when(defer).done(function() {
-                    setTimeout(function() { instance.run(); }, 1000);
+                $.when(defer).done(function () {
+                    callback();
                 });
                 return;
             }
@@ -313,13 +393,13 @@ var wordCloud = function (stg, createjs, options) {
 
                     /**** HACK to skip duplicated words ****/
                     if (items[i].type == "word" && item.type == "word" && items[i].content.children[0].text.toLowerCase() == item.content.children[0].text.toLowerCase()) {
-                        setTimeout(instance.run(), speed);
+                        instance.run(callback);
                         return;
                     }
-                    
+
                     if (items[i].id == item.id) {
                         if (item.size == 0) {
-                            $.when(w.removeShape(item.id)).done(function() {
+                            $.when(w.removeShape(item.id)).done(function () {
                                 stage.removeChild(items[i].content);
                                 items.splice(i, 1);
                             });
@@ -327,19 +407,19 @@ var wordCloud = function (stg, createjs, options) {
                             items[i].content.promoted = item.promoted;
                         }
 
-                        setTimeout(instance.run(), speed);
+                        instance.run(callback);
                         return;
                     }
                 }
-                $.when(instance.postItem(item, worker)).then(function() {
-                    
-                    setTimeout(function () { instance.run(); }, speed);
-                }, function() {
+                $.when(instance.postItem(item, worker)).then(function () {
+
+                    setTimeout(callback, speed);
+                }, function () {
                     trace("clean up");
                     $.when(instance.cleanUpStage(worker)).done(function () {
-                        instance.run();
+                        instance.run(callback);
                     });
-                }, function() {
+                }, function () {
                 });
                 idleCount = 0;
                 insertCount++;
@@ -351,8 +431,8 @@ var wordCloud = function (stg, createjs, options) {
                 var defer = new $.Deferred();
                 resetShadow();
                 effZoomInOut(defer);
-                $.when(defer).done(function() {
-                    setTimeout(function () { instance.run(); }, speed);
+                $.when(defer).done(function () {
+                    callback();
                 });
                 return;
             }
@@ -361,20 +441,20 @@ var wordCloud = function (stg, createjs, options) {
                 idleCount = -1;
                 var defer = new $.Deferred();
                 effZoomOut(defer);
-                $.when(defer).done(function() {
-                    setTimeout(function () { instance.run(); }, speed);
+                $.when(defer).done(function () {
+                    callback();
                 });
                 return;
-            } 
-            
+            }
+
             //idle
             idleCount++;
-            setTimeout(function () { instance.run(); }, speed);            
+            callback();
         },
         createItem: function (data) {
             var item = { content: null, collisionShape: null, promoted: data.promoted, id: data.id, size: data.size, type: data.type };
             // if NaN default to 40
-            
+
             if (isNaN(data.size))
                 data.size = 1;
 
@@ -383,7 +463,7 @@ var wordCloud = function (stg, createjs, options) {
                 data.size *= 1.5;
             }
 
-            var factor = sizeW / 1600;
+            var f = sizeW / 1600;
             var w, h, ctx, randColor, text, fontStyle, textObject, imgData;
             if (data.type == "image") {
                 item.content = new cjs.Container();
@@ -394,22 +474,22 @@ var wordCloud = function (stg, createjs, options) {
 
                 w = data.image.width;
                 h = data.image.height;
-                var imageSize = defaultImageSize;
-                var margin = imageSize / 50;
-                imageSize *= factor;
+                var imageSize = defaultImageSize * (1 + data.size / 10);
+                var margin = imageSize / 40;
+                //imageSize *= f;
                 var s = imageSize / Math.max(w, h);
 
                 bitmap.scaleX = s;
                 bitmap.scaleY = s;
 
                 var authorBitmap = new cjs.Bitmap(data.authorImage);
-                textObject = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), imageSize / 18 + "px 'Kavoon'", fontColor.image);
+                textObject = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), imageSize / 22 + "px 'Kavoon'", fontColor.image);
                 var lineh = textObject.getMeasuredHeight();
 
                 item.content.addChild(authorBitmap);
                 item.content.addChild(textObject);
-                textObject.y = h * s + 1 * margin;
-                textObject.x = imageSize / 8 + 4 * margin;
+                textObject.y = h * s + 2 * margin;
+                textObject.x = imageSize / 8 + 1 * margin;
                 authorBitmap.y = h * s + margin;
                 authorBitmap.x = 0;
                 var sAuthor = imageSize / 8 / Math.min(250, Math.max(data.aimage.width, data.aimage.width));
@@ -434,19 +514,23 @@ var wordCloud = function (stg, createjs, options) {
                 }
 
                 item.content.rotation = 0;
+                if (useCache)
+                    item.content.cache(-w, -h, w * 2, h * 3);
+
                 item.collisionShape = obb({ x: -margin, y: -margin }, w + margin * 2, h + margin * 2, degToRad(item.content.rotation));
+
                 item.tween = cjs.Tween.get(item.content);
             } else if (data.type == "tweet") {
                 var ctx = $("<canvas width='" + sizeW + "' height='" + sizeH + "'></canvas>")[0].getContext("2d");
-                
+
                 text = data.content;
                 text = '"' + text + '"';
                 var tweetFontSize = defaultTweetSize;
-                tweetFontSize *= factor;
-                var margin = tweetFontSize / 8;
+                //tweetFontSize *= f;
+                var margin = tweetFontSize / 6;
                 fontStyle = tweetFontSize + "px '" + "Arial" + "'";
 
-                var lines = fragmentText(text, 12 * tweetFontSize, ctx);
+                var lines = fragmentText(text, tweetFontSize * 7, ctx);
                 var textObjects = [];
                 var authorBitmap = new cjs.Bitmap(data.authorImage);
 
@@ -497,22 +581,25 @@ var wordCloud = function (stg, createjs, options) {
                     else
                         g.beginStroke(cjs.Graphics.getRGB(255, 200, 200));
 
-                    g.drawRect(-margin * 2, -margin * 2, w + margin * 4, h + margin * 4);
+                    g.drawRect(-margin * 4, -margin * 4, w + margin * 8, h + margin * 8);
                     var shape = new cjs.Shape(g);
                     item.content.addChild(shape);
                 }
 
-                item.collisionShape = obb({ x: -margin * 2, y: -margin * 2 }, w + margin * 4, h + margin * 4, degToRad(item.content.rotation));
+                if (useCache)
+                    item.content.cache(-w, -h, w * 2, h * 3);
+
+                item.collisionShape = obb({ x: -margin * 4, y: -margin * 4 }, w + margin * 8, h + margin * 8, degToRad(item.content.rotation));
                 item.tween = cjs.Tween.get(item.content);
             } else if (data.type == "word") {
                 var ctx = $("<canvas width='" + sizeW + "' height='" + sizeH + "'></canvas>")[0].getContext("2d");
                 //ctx = $("#canvas2")[0].getContext("2d");
                 text = data.content;
                 if (data.size > lastMax)
-                    lastMax = data.size;
+                    data.size = lastMax;
 
-                var wFontSize = defaultWordSize + (data.size / lastMax) * 30;
-                
+                var wFontSize = defaultWordSize + (data.size / lastMax) * 50;
+
                 fontStyle = wFontSize + "px '" + "Arial" + "'";
                 textObject = new cjs.Text(text, fontStyle, fontColor.word);
 
@@ -578,19 +665,22 @@ var wordCloud = function (stg, createjs, options) {
                 }
 
                 if (useCache)
-                    item.content.cache(0, 0, w, h);
-                item.collisionShape = obb({ x: 0, y: 0 }, w, h, degToRad(item.content.rotation));                
+                    item.content.cache(-w, -h, w * 3, h * 3);
+
+                item.collisionShape = obb({ x: 0, y: 0 }, w, h, degToRad(item.content.rotation));
             }
             return item;
         },
-        postItem: function(item) {
+        postItem: function (item) {
             var defer = new $.Deferred();
             var originRotation = stage.rotation;
             while (rotationMode != 0 && originRotation == item.collisionShape.rotation) {
                 item.collisionShape.rotation = degToRad(randomRotation(rotationMode));
             }
 
-            $.when(w.fitCollisionShape(item.collisionShape)).then(function(r) {
+            trace("thinking");
+            $.when(w.fitCollisionShape(item.collisionShape)).then(function (r) {
+                trace("thinking done");
                 if (r !== false) {
                     resetShadow();
 
@@ -603,16 +693,20 @@ var wordCloud = function (stg, createjs, options) {
 
                     var effects = [];
 
-                    if (presetAlpha[item.type])
+                    if (useSizeAlpha[item.type])
                         item.content.alpha = getAlpha(item);
-                    if (!insertEffect[item.type] && !presetAlpha[item.type]) {
+                    if (!insertEffect[item.type] && !useSizeAlpha[item.type]) {
                         item.content.alpha = 1;
                     }
-                    
+
 
                     var d = new $.Deferred();
-                    effGoto(item, d, gotoEffect[item.type], insertEffect[item.type]);
-                    $.when(w.insertShape(item.id, item.collisionShape), d).done(function() {
+                    if (preload == -1) {
+                        effGoto(item, d, gotoEffect[item.type], insertEffect[item.type]);
+                    } else {
+                        d.resolve();
+                    }
+                    $.when(w.insertShape(item.id, item.collisionShape), d).done(function () {
                         defer.resolve();
                     });
 
@@ -626,20 +720,21 @@ var wordCloud = function (stg, createjs, options) {
                     defer.reject();
                 }
             },
-                function() {
+                function () {
+                    trace("thinking failed");
                     defer.reject();
-                }, function() {
+                }, function () {
                 });
 
             return defer.promise();
         },
-        cleanUpStage:  function () {
+        cleanUpStage: function () {
             var count = Math.min(removeCount, items.length);
             var removeList = [];
             var promises = [];
             // set up the items to remove
             for (var i = 0; i < count; i++) {
-                promises.push(function() {
+                promises.push(function () {
                     var d = $.Deferred();
                     var rmvItem = items.shift();
                     if (rmvItem.promoted && rmvItem.priority > 0) {
@@ -650,9 +745,9 @@ var wordCloud = function (stg, createjs, options) {
                         var t = cjs.Tween.get(rmvItem.content);
                         removeList.push(t);
                         t.setPaused(true);
-                        t.to({ alpha: 0.6 }, f).to({ alpha: 0, scaleX: 2.5, scaleY: 2.5 }, f).call(function() {
+                        t.to({ alpha: 0.6 }, f).to({ alpha: 0, scaleX: 2.5, scaleY: 2.5 }, f).call(function () {
                             cjs.Tween.removeTweens(rmvItem.content);
-                            $.when(w.removeShape(rmvItem.id)).done(function() {
+                            $.when(w.removeShape(rmvItem.id)).done(function () {
                                 stage.removeChild(rmvItem.content);
                                 d.resolve();
                             });
@@ -665,12 +760,12 @@ var wordCloud = function (stg, createjs, options) {
             }
 
             // limit the concurrent remove
-            for (i = 0; i < Math.min(concurrentRemoveCount, removeList.length); i++) {
+            for (i = 0; i < Math.min(concurrentRemoveCount, removeList.length) ; i++) {
                 removeList.pop().setPaused(false);
             }
 
             var defer = new $.Deferred();
-            $.when.apply($, promises).done(function() {
+            $.when.apply($, promises).done(function () {
                 defer.resolve();
             });
             return defer;

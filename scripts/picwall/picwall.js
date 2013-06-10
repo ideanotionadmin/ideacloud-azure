@@ -14,6 +14,9 @@ var picWall = function (stg, createjs, options) {
     var effectAfterNInserts = -1;
     var sizeI = 260;
     var pictureAlpha = 0.5;
+	var preload = 0;
+	var preloadComplete = null;
+
     
     // options;
     var sizeH = options.sizeH;
@@ -30,7 +33,11 @@ var picWall = function (stg, createjs, options) {
         effectAfterNIdles = options.effectAfterNIdles;
     if (options.pictureAlpha)
         pictureAlpha = options.pictureAlpha;
-    
+    if (options.preload)
+        preload = options.preload;
+    if (options.preloadComplete)
+        preloadComplete = options.preloadComplete;
+		
     var worker = new Worker('scripts/picwall/picwall.webworker.js');
     worker.postMessage("");
     worker.onmessage = function (e) {
@@ -49,7 +56,7 @@ var picWall = function (stg, createjs, options) {
         },
         addMask: function (d) {
             promise[promiseCounter] = new $.Deferred();
-            worker.postMessage({ action: "addMask", data: d, pid: promiseCounter });
+            worker.postMessage({ action: "addMask",  pid: promiseCounter });
             return promise[promiseCounter++].promise();
         },
         chooseMask: function (d) {
@@ -192,6 +199,16 @@ var picWall = function (stg, createjs, options) {
         },
         dataSource: [],
         stop : false,
+        checkItem : function (id) {
+            var found = false;
+            for (var oIndex = 0; oIndex < items.length; oIndex++) {
+                if (id == items[oIndex].id) {
+                    found = true;
+                    break;
+                }
+            }
+            return found;
+        },
         run : function () {
             if (instance.stop) {
                 // todo: cleanup
@@ -206,6 +223,49 @@ var picWall = function (stg, createjs, options) {
                 return;
             }
 
+            if (preload == 0) {
+                stage.alpha = 1;                
+                preload = -1;
+                if (preloadComplete)
+                    preloadComplete();
+            } else if (preload > 0) {
+                stage.alpha = 0;
+				if (instance.dataSource.length == 0) {
+                    preload = 0;
+                    setTimeout(instance.run(), speed);
+                }
+                else {
+                    var data = instance.dataSource.shift();
+                    var item = instance.createItem(data);
+                    item.type = data.type;
+					for (var i in worker.items) {
+						if (worker.items[i].id == item.id) {
+							if (item.size == 0) {
+								$.when(worker.removeShape(item.id)).done(function () {
+									worker.stage.removeChild(worker.items[i].content);
+									worker.items.splice(i, 1);
+								});
+							} else {
+								worker.items[i].promoted = item.promoted;
+							}
+							setTimeout(instance.run(), speed);
+							return;
+						}
+					}
+					$.when(instance.postImage(item, worker)).then(function () {
+                        setTimeout(function () { instance.run(); }, 0);
+                        preload--;
+                    }, function () {
+                        trace("clean up");
+                        $.when(instance.cleanUpStage(worker)).done(function () {
+                            instance.run();
+                        });
+                    }, function () {
+                    });
+                }
+                return;
+            }
+				
             if (instance.dataSource.length > 0) {
                 var data = instance.dataSource.shift();
 
@@ -462,6 +522,10 @@ var picWall = function (stg, createjs, options) {
             var promises = [];
             $.when(w.insertShape(item.id)).then(function(results) {
                 var removeIndex;
+				var transSpeed = 500;
+				if (preload > 0)
+					transSpeed = 0;
+					
                 for (var i in results) {
                     var found = false;
                     for (var j in items) {
@@ -474,7 +538,7 @@ var picWall = function (stg, createjs, options) {
                                     cjs.Tween.get(items[j].content).to({
                                         x: results[i].x,
                                         y: results[i].y
-                                    }, 500).call(function() {
+                                    }, transSpeed).call(function() {
                                         d.resolve();
                                     });
                                 })();
