@@ -474,7 +474,7 @@ var wordCloud = function (stg, createjs, options) {
 
                 w = data.image.width;
                 h = data.image.height;
-                var imageSize = defaultImageSize * (1 + data.size / 10);
+                var imageSize = defaultImageSize * 2;
                 var margin = imageSize / 40;
                 //imageSize *= f;
                 var s = imageSize / Math.max(w, h);
