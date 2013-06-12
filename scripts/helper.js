@@ -120,8 +120,8 @@ function circleBoundaryTest(s) {
     return false;
 }
 
-function canvasBoundaryTest(p, sw, sh) {
-    return p.x > 0 && p.x < sw && p.y > 0 && p.y < sh;
+function canvasBoundaryTest(p, c, sw, sh) {
+    return p.x - (c.w / 2) > 0 && p.x + (c.w / 2) < sw && p.y - (c.h / 2) > 0 && p.y + (c.h / 2) < sh;
 }
 
 function prettyDate(time) {

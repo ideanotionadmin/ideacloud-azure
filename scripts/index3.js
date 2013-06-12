@@ -9,28 +9,26 @@ var showing = false;
     var worker1, worker2, worker3;
     var container1, container2, container3;
     var dataSource = { image: [], word: [], tweet: [], ic: 0, wc: 0, tc: 0 };
-    var sizeW = 1920;
+    var sizeW = 1600;
     var sizeH = 1200;
     var mode = 0;  
 
     var twitterSearchPhrase = 'Microsoft';
     var instaSearchPhrase = 'Microsoft';
-    var speed = 100;
-    var speedTweet = 5000;
-    var speedFactor = 0.6;
+    var speed = 1;
+    var speedFactor = 0.5;
     var bgColor = '#000000';
     var fadecolor = '#aaaaaa';
     var tweetColor = '#ff0000';
-    var wordColor = '#ff0000';
     var tintValue = 120;
     var zoomout = 5;
-    var effGoto = false;
-    var wordRotation = 1;
+    var effGoto = true;
+    var wordRotation = 0;
     var tweetRotation = 0;
-    var imageRotation = 0;
+    var imageRotation = 1;
     var shadow = 1;
 
-    //loadSettings();
+    loadSettings();
 
     var dal = dataAccess(dataSource, '74e8c9bc10634f3dab6b84da4e8468f5', pushData);
 
@@ -42,16 +40,16 @@ var showing = false;
 
     var manifest = [
         { src: "shapes/no-mask.png", id: "noMask", data: { mask: true } },
-        { src: "shapes/word.png", id: "noMask", data: { mask: true } },
-    { src: "shapes/tweets.png", id: "circleMask", data: { mask: true } },
-        { src: "shapes/image.png", id: "cloudmask", data: { mask: true } }
+        { src: "shapes/tweets.png", id: "circleMask", data: { mask: true } },
+        { src: "shapes/image.png", id: "cloudmask", data: { mask: true } },
+        { src: "shapes/word.png", id: "noMask", data: { mask: true } }
     ];
 
     // Setup related methods
     function screenResize() {
         var h = $(window).height();
         var w = $(window).width();
-        if (w / h < sizeW / sizeH) { // wider 1000 100
+        if (w / h > sizeW / sizeH) { // wider 1000 100
             $('#canvas').css('width', w);
             $('#canvas').css('height', w * sizeH / sizeW);
             $('#canvas').css('top', (h - (w * sizeH / sizeW)) / 2);
@@ -60,7 +58,6 @@ var showing = false;
             $('#canvas').css('width', h * sizeW / sizeH);
             $('#canvas').css('left', (w - (h * sizeW / sizeH)) / 2);
         }
-        //$('#canvas').css('border', 'solid 1px red');
     }
 
     function handleFileLoad(event) {
@@ -80,8 +77,8 @@ var showing = false;
     function handleComplete() {
         //setupMask(0);
         worker1.chooseMask(1);
-        worker2.chooseMask(3);
-        worker3.chooseMask(2);
+        worker2.chooseMask(2);
+        worker3.chooseMask(3);
 
         // Uncomment this for debug using Twitter directly
         getData();
@@ -91,28 +88,28 @@ var showing = false;
     function runWorkers(d) {
         if (mode == 0) {
             container1.alpha = 1;
-            //container2.alpha = 1;
-            //container3.alpha = 1;
+            container2.alpha = 1;
+            container3.alpha = 1;
         }
 
         if (mode == 0) {
             setTimeout(function () {
-                runCallback1();
-
-                setTimeout(function () { worker2.run(runCallback2); }, speedTweet);
-                setTimeout(function () { worker3.run(runCallback3); }, speedTweet);
+                runCallback();
             }, d);        
         }
     }
 
-    function runCallback1() {
-        setTimeout(function() { worker1.run(runCallback1); }, speed);
-    }
-    function runCallback2() {
-        setTimeout(function () { worker2.run(runCallback2); }, speedTweet);
-    }
-    function runCallback3() {
-        setTimeout(function () { worker3.run(runCallback3); }, speedTweet);
+    function runCallback() {
+        var r = randomRange(0, 100);
+        if (r < 35) {
+            setTimeout(function() { worker1.run(runCallback); }, speed);
+        }
+        else if (r < 65) {
+            setTimeout(function () { worker2.run(runCallback); }, speed);
+        }
+        else if (r >= 65) {
+            setTimeout(function () { worker3.run(runCallback); }, speed);
+        }
     }
 
     // Data related Methods
@@ -165,46 +162,18 @@ var showing = false;
         container1.tween = cjs.Tween.get(container1);
         container1.mouseEventsEnabled = false;
         worker1 = wordCloud(container1, cjs, {
-            factor: 1.5,
-            sizeW: sizeW,
-            sizeH: sizeH,
-            defaultMaxSize: 42,
-            removeCount: 12,
-            concurrentRemoveCount: 8,
-            rotationMode: wordRotation,
-            effectAfterNIdles: -1,
-            effectAfterNInserts: -1,
-            defaultWordSize: 20,
-            defaultTweetSize: 28,
-            defaultImageSize: 240,
-            insertEffect: { tweet: true, word: true, image: true },
-            gotoEffect: { tweet: effGoto, word: effGoto, image: effGoto },
-            useSizeAlpha: { tweet: false, word: false, image: false },
-            resetShadowAfterInsert: { tweet: true, word: false, image: true },
-            resetShadowColor: { tweet: fadecolor, word: fadecolor, image: fadecolor },
-            shadowColor: { tweet: wordColor, word: wordColor, image: wordColor },
-            fontColor: { tweet: wordColor, word: wordColor, image: wordColor },
-            shadowSize: { tweet: 25 * shadow, word: 25 * shadow, image: 15 * shadow },
-            effectSpeedRatio: speedFactor,
-            useCache: true,
-            preload: -1,
-            randomizeColor :  { tweet: false, word: true, image: false },            
-        });
-
-        
-        worker2 = wordCloud(container1, cjs, {
-            factor: 1.5,
+            factor: 2,
             sizeW: sizeW,
             sizeH: sizeH,
             defaultMaxSize: 40,
-            removeCount: 1,
-            concurrentRemoveCount: 1,
-            rotationMode: imageRotation,
+            removeCount: 12,
+            concurrentRemoveCount: 8,
+            rotationMode: tweetRotation,
             effectAfterNIdles: -1,
-            effectAfterNInserts: -1,
+            effectAfterNInserts: zoomout,
             defaultWordSize: 50,
-            defaultTweetSize: 24,
-            defaultImageSize: 200,
+            defaultTweetSize: 28,
+            defaultImageSize: 160,
             insertEffect: { tweet: true, word: true, image: true },
             gotoEffect: { tweet: effGoto, word: effGoto, image: effGoto },
             useSizeAlpha: { tweet: false, word: false, image: false },
@@ -218,23 +187,55 @@ var showing = false;
             preload: -1,
             
         });
-        
-        
-        worker3 = wordCloud(container1, cjs, {
-            factor: 1.5,
+
+        container2 = new cjs.Container();
+        container2.tween = cjs.Tween.get(container2);
+        container2.mouseEventsEnabled = false;
+        worker2 = wordCloud(container1, cjs, {
+            factor: 2,
             sizeW: sizeW,
             sizeH: sizeH,
             defaultMaxSize: 40,
-            removeCount: 1,
-            concurrentRemoveCount: 1,
-            rotationMode: 0,
+            removeCount: 12,
+            concurrentRemoveCount: 8,
+            rotationMode: imageRotation,
             effectAfterNIdles: -1,
-            effectAfterNInserts: -1,
-            defaultWordSize: 60,
-            defaultTweetSize: 28,
+            effectAfterNInserts: zoomout,
+            defaultWordSize: 50,
+            defaultTweetSize: 24,
             defaultImageSize: 240,
             insertEffect: { tweet: true, word: true, image: true },
-            gotoEffect: { tweet: false, word: false, image: false },
+            gotoEffect: { tweet: effGoto, word: effGoto, image: effGoto },
+            useSizeAlpha: { tweet: false, word: false, image: false },
+            resetShadowAfterInsert: { tweet: true, word: true, image: true },
+            resetShadowColor: { tweet: fadecolor, word: fadecolor, image: fadecolor },
+            shadowColor: { tweet: tweetColor, word: tweetColor, image: tweetColor },
+            fontColor: { tweet: tweetColor, word: tweetColor, image: tweetColor },
+            shadowSize: { tweet: 25 * shadow, word: 25 * shadow, image: 15 * shadow },
+            effectSpeedRatio: speedFactor,
+            useCache: true,
+            preload: -1,
+            
+        });
+
+        container3 = new cjs.Container();
+        container3.tween = cjs.Tween.get(container3);
+        container3.mouseEventsEnabled = false;
+        worker3 = wordCloud(container1, cjs, {
+            factor: 2,
+            sizeW: sizeW,
+            sizeH: sizeH,
+            defaultMaxSize: 40,
+            removeCount: 12,
+            concurrentRemoveCount: 8,
+            rotationMode: wordRotation,
+            effectAfterNIdles: -1,
+            effectAfterNInserts: zoomout,
+            defaultWordSize: 60,
+            defaultTweetSize: 24,
+            defaultImageSize: 240,
+            insertEffect: { tweet: true, word: true, image: true },
+            gotoEffect: { tweet: effGoto, word: effGoto, image: effGoto },
             useSizeAlpha: { tweet: false, word: false, image: false },
             resetShadowAfterInsert: { tweet: true, word: true, image: true },
             resetShadowColor: { tweet: fadecolor, word: fadecolor, image: fadecolor },
@@ -244,12 +245,12 @@ var showing = false;
             effectSpeedRatio: speedFactor,
             useCache: true,
             preload: -1,
-            tweetFrame : true,
+            
         });
-        
-        //stage.addChild(container2);
+
+        stage.addChild(container2);
         stage.addChild(container1);
-        //stage.addChild(container3);
+        stage.addChild(container3);
 
 
         preloader = new cjs.LoadQueue(false);
@@ -505,16 +506,17 @@ var showing = false;
     function updateOptions() {
         worker1.updateOptions(
             {
-                rotationMode: wordRotation,
+                rotationMode: tweetRotation,
+                effectAfterNInserts: zoomout,
+                gotoEffect: { tweet: effGoto, word: effGoto, image: effGoto },
                 resetShadowColor: { tweet: fadecolor, word: fadecolor, image: fadecolor },
                 shadowColor: { tweet: tweetColor, word: tweetColor, image: tweetColor },
                 fontColor: { tweet: tweetColor, word: tweetColor, image: tweetColor },
-                shadowSize: { tweet: 25 * shadow, word: 2 * shadow, image: 15 * shadow },
+                shadowSize: { tweet: 25 * shadow, word: 25 * shadow, image: 15 * shadow },
                 effectSpeedRatio: speedFactor,
 
             }
         );
-        
         worker2.updateOptions(
             {
                 rotationMode: imageRotation,
@@ -643,18 +645,18 @@ var showing = false;
     }
     function insertTweet(tweet, remove) {
         if (remove) {
-            worker3.dataSource.unshift(tweet);
+            worker1.dataSource.unshift(tweet);
 
         } else {
-            worker3.dataSource.push(tweet);
+            worker1.dataSource.push(tweet);
         }
     }
     function insertWord(word, remove) {
         if (remove) {
-            worker1.dataSource.unshift(word);
+            worker3.dataSource.unshift(word);
 
         } else {
-            worker1.dataSource.push(word);
+            worker3.dataSource.push(word);
 
         }
     }

@@ -41,12 +41,13 @@ function fitCollisionShape(collisionShape) {
         if (t > maxTheta * 4)
             t = chord / delta;
         var p = spiral(t);
-        if (canvasBoundaryTest(p, sizeW, sizeH)) {
+        if (canvasBoundaryTest(p, collisionShape, sizeW, sizeH)) {            
             collisionShape.setPosition(p);
             if (rotationMode > 1)
                 collisionShape.setRotation(degToRad(randomRotation()));
             //            for (var i = 0; i < 2; i++) {
             //collisionShape.setRotation(-Math.PI / 2 + (Math.PI / 2) * i);
+
             collisionShape.update();
             if (boundaryTest(collisionShape, masks[currentMask]) && !hitTest(collisionShape, items)) {
                 return true;

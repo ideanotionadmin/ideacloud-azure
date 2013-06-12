@@ -1,7 +1,7 @@
 var wordCloud = function (stg, createjs, options) {
     var cjs = createjs;
     var factor = 1;
-    var percision = 2; // higher = less precise
+    var percision = 1; // higher = less precise
     var bg;
     var stage = stg;
     var promise = [];
@@ -30,10 +30,14 @@ var wordCloud = function (stg, createjs, options) {
     var concurrentRemoveCount = 1;
     var rotationMode = 0;
     var speed = 1000;
+    var randomizeColor = { tweet: false, word: false, image: false };
     var useCache = true;
     var effectSpeedRatio = 1;
     var preload = 0;
     var preloadComplete = null;
+    var tweetFrame = false;
+    
+    var lastRotation = Math.PI;
     lastMax = options.defaultMaxSize;
     sizeH = options.sizeH;
     sizeW = options.sizeW;
@@ -85,7 +89,11 @@ var wordCloud = function (stg, createjs, options) {
             preloadComplete = opts.preloadComplete;
         if (opts.factor)
             factor = opts.factor;
-
+        if (opts.randomizeColor)
+            randomizeColor = opts.randomizeColor;
+        if (opts.tweetFrame)
+            tweetFrame = opts.tweetFrame;
+        
         sizeW = sizeW * factor;
         sizeH = sizeH * factor;
         updateOptions();
@@ -96,10 +104,15 @@ var wordCloud = function (stg, createjs, options) {
         for (var itemIndex in items) {
             for (var i in items[itemIndex].content.children) {
                 if (items[itemIndex].content.children[i].color) {
-                    items[itemIndex].content.children[i].color = fontColor[items[itemIndex].type];
+                    if (randomizeColor[items[itemIndex].type]) {
+                        items[itemIndex].content.children[i].color = randomColor();
+                    }
+                    else {
+                        items[itemIndex].content.children[i].color = fontColor[items[itemIndex].type];
+                    }
                 }
                 if (items[itemIndex].content.children[i].shadow) {
-                    items[itemIndex].content.children[i].shadow.color = shadowColor[items[itemIndex].type];
+                    items[itemIndex].content.children[i].shadow.color = items[itemIndex].content.children[i].color;
                 }
 
                 if (useCache)
@@ -482,8 +495,13 @@ var wordCloud = function (stg, createjs, options) {
                 bitmap.scaleX = s;
                 bitmap.scaleY = s;
 
+                var imageColor = fontColor.image;
                 var authorBitmap = new cjs.Bitmap(data.authorImage);
-                textObject = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), imageSize / 22 + "px 'Kavoon'", fontColor.image);
+                if (randomizeColor.image) {
+                    imageColor = randomColor();
+                }
+
+                textObject = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), imageSize / 22 + "px 'Kavoon'", imageColor);
                 var lineh = textObject.getMeasuredHeight();
 
                 item.content.addChild(authorBitmap);
@@ -543,7 +561,14 @@ var wordCloud = function (stg, createjs, options) {
                     if (linew > w)
                         w = linew;
                 }
-                textObjects[lines.length] = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), tweetFontSize / 1.8 + "px 'Kavoon'", fontColor.tweet);
+                
+                var tweetColor = fontColor.tweet;
+                var tweetShadowColor = shadowColor.tweet;
+                if (randomizeColor.tweet) {
+                    tweetColor = randomColor();
+                    tweetShadowColor = tweetColor;
+                }
+                textObjects[lines.length] = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), tweetFontSize / 1.8 + "px 'Kavoon'", tweetColor);
 
                 var lineh = textObjects[0].getMeasuredHeight();
                 h = lineh * (lines.length + 1);
@@ -554,19 +579,19 @@ var wordCloud = function (stg, createjs, options) {
                 item.content.addChild(textObjects[lines.length]);
                 textObjects[lines.length].y = lineh * lines.length + 3 * margin;
                 textObjects[lines.length].x = tweetFontSize + 2 * margin;
-                textObjects[lines.length].shadow = new cjs.Shadow(shadowColor.tweet, 2, 2, shadowSize.tweet);
+                textObjects[lines.length].shadow = new cjs.Shadow(tweetShadowColor, 2, 2, shadowSize.tweet);
                 authorBitmap.y = lineh * lines.length + 2 * margin;
                 authorBitmap.x = 0;
                 authorBitmap.scaleX = tweetFontSize / 48;
                 authorBitmap.scaleY = tweetFontSize / 48;
-                authorBitmap.shadow = new cjs.Shadow(shadowColor.tweet, 2, 2, shadowSize.tweet);
+                authorBitmap.shadow = new cjs.Shadow(tweetShadowColor, 2, 2, shadowSize.tweet);
                 item.content.regX = w / 2;
                 item.content.regY = h / 2;
 
                 for (var j = 0; j < lines.length; j++) {
                     item.content.addChild(textObjects[j]);
                     textObjects[j].y = lineh * j;
-                    textObjects[j].shadow = new cjs.Shadow(shadowColor.tweet, 2, 2, shadowSize.tweet);
+                    textObjects[j].shadow = new cjs.Shadow(tweetShadowColor, 2, 2, shadowSize.tweet);
                 }
 
                 item.content.snapToPixel = true;
@@ -586,10 +611,23 @@ var wordCloud = function (stg, createjs, options) {
                     item.content.addChild(shape);
                 }
 
-                if (useCache)
-                    item.content.cache(-w, -h, w * 2, h * 3);
+                if (tweetFrame) {
+                    var g = new cjs.Graphics();
+                    g.beginStroke(cjs.Graphics.getRGB(200, 200, 200)).beginFill("#888");
+                    g.drawRect(-margin * 3, -margin * 3, w + margin * 8, h + margin * 8);
 
-                item.collisionShape = obb({ x: -margin * 4, y: -margin * 4 }, w + margin * 8, h + margin * 8, degToRad(item.content.rotation));
+                    var shape = new cjs.Shape(g);
+                    shape.alpha = 0.1;
+                    item.content.addChild(shape);
+                    item.collisionShape = obb({ x: -margin * 6, y: -margin * 6 }, w + margin * 14, h + margin * 14, degToRad(item.content.rotation));
+                }
+                else {
+                    item.collisionShape = obb({ x: -margin * 4, y: -margin * 4 }, w + margin * 8, h + margin * 8, degToRad(item.content.rotation));
+                }
+                
+                if (useCache)
+                    item.content.cache(-w, -h, w * 3, h * 3);
+
                 item.tween = cjs.Tween.get(item.content);
             } else if (data.type == "word") {
                 var ctx = $("<canvas width='" + sizeW + "' height='" + sizeH + "'></canvas>")[0].getContext("2d");
@@ -599,9 +637,15 @@ var wordCloud = function (stg, createjs, options) {
                     data.size = lastMax;
 
                 var wFontSize = defaultWordSize + (data.size / lastMax) * 50;
-
+                var wordColor = fontColor.word;
+                var wordShadowColor = shadowColor.word;
+                if (randomizeColor.word) {
+                    wordColor = randomColor();
+                    wordShadowColor = wordColor;
+                }
+                
                 fontStyle = wFontSize + "px '" + "Arial" + "'";
-                textObject = new cjs.Text(text, fontStyle, fontColor.word);
+                textObject = new cjs.Text(text, fontStyle, wordColor);
 
                 w = textObject.getMeasuredWidth();
                 h = textObject.getMeasuredHeight();
@@ -641,7 +685,7 @@ var wordCloud = function (stg, createjs, options) {
 
                 item.content = new cjs.Container();
                 //shadow
-                textObject.shadow = new cjs.Shadow(shadowColor.word, 0, 0, shadowSize.word);
+                textObject.shadow = new cjs.Shadow(wordShadowColor, 0, 0, shadowSize.word);
 
                 item.content.addChild(textObject);
 
@@ -673,10 +717,13 @@ var wordCloud = function (stg, createjs, options) {
         },
         postItem: function (item) {
             var defer = new $.Deferred();
-            var originRotation = stage.rotation;
-            while (rotationMode != 0 && originRotation == item.collisionShape.rotation) {
-                item.collisionShape.rotation = degToRad(randomRotation(rotationMode));
+            var r = degToRad(randomRotation(rotationMode));
+            while (rotationMode != 0 && (lastRotation == item.collisionShape.rotation || Math.abs(lastRotation - item.collisionShape.rotation) == Math.PI)) {
+                r = degToRad(randomRotation(rotationMode));
+                item.collisionShape.rotation = r;
             }
+
+            lastRotation = r;
 
             trace("thinking");
             $.when(w.fitCollisionShape(item.collisionShape)).then(function (r) {
