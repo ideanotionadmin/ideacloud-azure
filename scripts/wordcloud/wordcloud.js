@@ -8,9 +8,13 @@ var wordCloud = function (stg, createjs, options) {
     var items = [];
     var promiseCounter = 0;
     var pause = false;
-    var defaultImageSize = 180;
-    var defaultTweetSize = 18;
-    var defaultWordSize = 30;
+    var imageSize = 180;
+    var imageSizeMax = 220;
+    var tweetSize = 18;
+    var tweetSizeMax = 24;
+    var wordSize = 30;
+    var wordSizeMax = 45;
+    var sizeMax = 30;
     var insertCount = 0;
     var idleCount = 0;
     var effectAfterNIdles = -1;
@@ -23,14 +27,13 @@ var wordCloud = function (stg, createjs, options) {
     var shadowColor = { tweet: "#fff", word: "#fff", image: "#fff" };
     var fontColor = { tweet: "#fff", word: "#fff", image: "#fff" };
     var shadowSize = { tweet: 35, word: 25, image: 15 };
-    var lastMax = 30;
     var sizeH = 1600;
     var sizeW = 1200;
     var removeCount = 15;
     var concurrentRemoveCount = 1;
     var rotationMode = 0;
-    var speed = 1000;
-    var randomizeColor = { tweet: false, word: false, image: false };
+    var speed = 1;
+    var randomizeColor;
     var useCache = true;
     var effectSpeedRatio = 1;
     var preload = 0;
@@ -38,7 +41,8 @@ var wordCloud = function (stg, createjs, options) {
     var tweetFrame = false;
     
     var lastRotation = Math.PI;
-    lastMax = options.defaultMaxSize;
+    if (options.sizeMax)
+        sizeMax = options.sizeMax;
     sizeH = options.sizeH;
     sizeW = options.sizeW;
     removeCount = options.removeCount;
@@ -59,12 +63,19 @@ var wordCloud = function (stg, createjs, options) {
             effectAfterNInserts = opts.effectAfterNInserts;
         if (opts.effectAfterNIdles)
             effectAfterNIdles = opts.effectAfterNIdles;
-        if (opts.defaultTweetSize)
-            defaultTweetSize = opts.defaultTweetSize;
-        if (opts.defaultImageSize)
-            defaultImageSize = opts.defaultImageSize;
-        if (opts.defaultWordSize)
-            defaultWordSize = opts.defaultWordSize;
+        if (opts.wordSize)
+            wordSize = opts.wordSize;
+        if (opts.wordSizeMax)
+            wordSizeMax = opts.wordSizeMax;
+        if (opts.tweetSize)
+            tweetSize = opts.tweetSize;
+        if (opts.tweetSizeMax)
+            tweetSizeMax = opts.tweetSizeMax;
+        if (opts.imageSize)
+            imageSize = opts.imageSize;
+        if (opts.imageSizeMax)
+            imageSizeMax = opts.imageSizeMax;
+
         if (opts.resetShadowAfterInsert)
             resetShadowAfterInsert = opts.resetShadowAfterInsert;
         if (opts.insertEffect)
@@ -104,8 +115,8 @@ var wordCloud = function (stg, createjs, options) {
         for (var itemIndex in items) {
             for (var i in items[itemIndex].content.children) {
                 if (items[itemIndex].content.children[i].color) {
-                    if (randomizeColor[items[itemIndex].type]) {
-                        items[itemIndex].content.children[i].color = randomColor();
+                    if (randomizeColor && randomizeColor.length > 0) {
+                        items[itemIndex].content.children[i].color = randomizeColor[randomRange(0, randomizeColor.length - 1)];
                     }
                     else {
                         items[itemIndex].content.children[i].color = fontColor[items[itemIndex].type];
@@ -250,7 +261,7 @@ var wordCloud = function (stg, createjs, options) {
                 var d = new $.Deferred();
                 if (effects.length > 0)
                     effects[randomRange(0, effects.length - 1)](item, d);
-            }).wait(6000 * effectSpeedRatio).call(function () {
+            }).wait(speed * effectSpeedRatio).call(function () {
                 pause = false;
                 defer.resolve();
             });
@@ -335,11 +346,11 @@ var wordCloud = function (stg, createjs, options) {
         if (s.promoted)
             return 0.7;
 
-        if (s.size > lastMax) {
-            s.size = lastMax;
+        if (s.size > sizeMax) {
+            sizeMax = s.size;
         }
 
-        var alpha = 0.10 + (s.size / lastMax) * 0.50;
+        var alpha = 0.10 + (s.size / sizeMax) * 0.50;
         return alpha;
     };
 
@@ -487,27 +498,32 @@ var wordCloud = function (stg, createjs, options) {
 
                 w = data.image.width;
                 h = data.image.height;
-                var imageSize = defaultImageSize * 2;
+                
+                if (data.size > sizeMax) {
+                    sizeMax = data.size;
+                }
+                var imagePixel = imageSize + (data.size / sizeMax) * (imageSizeMax - imageSize);
+
                 var margin = imageSize / 40;
                 //imageSize *= f;
-                var s = imageSize / Math.max(w, h);
+                var s = imagePixel / Math.max(w, h);
 
                 bitmap.scaleX = s;
                 bitmap.scaleY = s;
 
                 var imageColor = fontColor.image;
                 var authorBitmap = new cjs.Bitmap(data.authorImage);
-                if (randomizeColor.image) {
-                    imageColor = randomColor();
+                if (randomizeColor && randomizeColor.length > 0) {
+                    imageColor = randomizeColor[randomRange(0, randomizeColor.length - 1)];
                 }
 
-                textObject = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), imageSize / 22 + "px 'Kavoon'", imageColor);
+                textObject = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), imagePixel / 22 + "px 'Kavoon'", imageColor);
                 var lineh = textObject.getMeasuredHeight();
 
                 item.content.addChild(authorBitmap);
                 item.content.addChild(textObject);
                 textObject.y = h * s + 2 * margin;
-                textObject.x = imageSize / 8 + 1 * margin;
+                textObject.x = imagePixel / 8 + 1 * margin;
                 authorBitmap.y = h * s + margin;
                 authorBitmap.x = 0;
                 var sAuthor = imageSize / 8 / Math.min(250, Math.max(data.aimage.width, data.aimage.width));
@@ -543,12 +559,17 @@ var wordCloud = function (stg, createjs, options) {
 
                 text = data.content;
                 text = '"' + text + '"';
-                var tweetFontSize = defaultTweetSize;
+                if (data.size > sizeMax) {
+                    sizeMax = data.size;
+                }
+
+                var tweetFontSize = tweetSize + (data.size / sizeMax) * (tweetSizeMax - tweetSize);
+
                 //tweetFontSize *= f;
                 var margin = tweetFontSize / 6;
                 fontStyle = tweetFontSize + "px '" + "Arial" + "'";
 
-                var lines = fragmentText(text, tweetFontSize * 7, ctx);
+                var lines = fragmentText(text, tweetFontSize * 5, ctx);
                 var textObjects = [];
                 var authorBitmap = new cjs.Bitmap(data.authorImage);
 
@@ -564,10 +585,11 @@ var wordCloud = function (stg, createjs, options) {
                 
                 var tweetColor = fontColor.tweet;
                 var tweetShadowColor = shadowColor.tweet;
-                if (randomizeColor.tweet) {
-                    tweetColor = randomColor();
+                if (randomizeColor && randomizeColor.length > 0) {
+                    tweetColor = randomizeColor[randomRange(0, randomizeColor.length - 1)];
                     tweetShadowColor = tweetColor;
                 }
+
                 textObjects[lines.length] = new cjs.Text("@" + data.authorName + ", " + prettyDate(data.dateTime), tweetFontSize / 1.8 + "px 'Kavoon'", tweetColor);
 
                 var lineh = textObjects[0].getMeasuredHeight();
@@ -633,16 +655,18 @@ var wordCloud = function (stg, createjs, options) {
                 var ctx = $("<canvas width='" + sizeW + "' height='" + sizeH + "'></canvas>")[0].getContext("2d");
                 //ctx = $("#canvas2")[0].getContext("2d");
                 text = data.content;
-                if (data.size > lastMax)
-                    data.size = lastMax;
+                if (data.size > sizeMax) {
+                    sizeMax = data.size;
+                }
 
-                var wFontSize = defaultWordSize + (data.size / lastMax) * 50;
+                var wFontSize = wordSize + (data.size / sizeMax) * (wordSizeMax - wordSize);
                 var wordColor = fontColor.word;
                 var wordShadowColor = shadowColor.word;
-                if (randomizeColor.word) {
-                    wordColor = randomColor();
+                if (randomizeColor && randomizeColor.length > 0) {
+                    wordColor = randomizeColor[randomRange(0, randomizeColor.length - 1)];
                     wordShadowColor = wordColor;
                 }
+
                 
                 fontStyle = wFontSize + "px '" + "Arial" + "'";
                 textObject = new cjs.Text(text, fontStyle, wordColor);

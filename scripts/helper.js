@@ -146,7 +146,11 @@ function prettyDate(time) {
 function cleanText(s) {
     var div = document.createElement('div');
     div.innerHTML = s.replace(/\\/g, '');
-    return div.firstChild.nodeValue;
+    if (div.firstChild)
+        return div.firstChild.nodeValue;
+    else {
+        return s;
+    }
 }
 
 

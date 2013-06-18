@@ -16,31 +16,33 @@
         <div id="options" style="position:absolute; z-index:1000;width:500px;height:800px;left:0px;top:0px;display:none;">
             <br/>
             <div>
-                Background color: <input id="bgcolor" type="text" class="input-small minicolors"  value=""/>
+                Background color: <input id="bgColor" type="text" class="input-small minicolors"  value=""/>
             </div>
             <div>
-                Font color: <input id="tweetcolor" type="text" class="input-small minicolors"  value=""/>
+                Tweet color: <input id="tweetColor" type="text" class="input-small minicolors"  value=""/>
             </div>
             <div>
-                Fade Color: <input id="fadecolor" type="text" class="input-small minicolors"  value=""/>                
+                Fade Color: <input id="fadeColor" type="text" class="input-small minicolors"  value=""/>                
             </div>
             <div>
-                Speed (0.1 = fast, 1.0 = slow): <input id="speedFactor" value="0.5" />
+                Word Colors: <input id="wordColors" value="#C4D6CE,#F9E4CA,#E89B9A,#917471,#E83402,#9396A0,#FFFBED,#CDC489" />
             </div>
             <div>
-                Goto Effect: <input type="checkbox" id="effGoto"/>
+                Speed (0.1 = fast, 1.0 = slower): <input id="speedFactor" value="0.5" />
+                Words Per Min: <input id="rateWordsPerMin" value="60" />
+                Tweets Per Min: <input id="rateTweetsPerMin" value="30" />
+                Images Per Min: <input id="rateImagesPerMin" value="20" />
             </div>
             <div>
-                Rotations: Word <input type="checkbox" id="wordRotation"/>            
-                Image: <input type="checkbox" id="imageRotation"/>
-                Tweet: <input type="checkbox" id="tweetRotation"/>
+                Word Size: <input id="wordSize" value="30" />
+                Word Size Max: <input id="wordSizeMax" value="30" />
+                Tweet Size: <input id="tweetSize" value="20" />
+                Tweet Size Max: <input id="tweetSizeMax" value="20" />
+                Word Size: <input id="imageSize" value="30" />
+                Word Size Max: <input id="imageSizeMax" value="30" />
             </div>
-            <div>
+            <div>                
                 Shadow: <input type="checkbox" id="shadow"/>
-            </div>
-
-            <div>
-                ZoomOutFrequency (zoom out after # of insert; -1 to turn off): <input type="text" value="5" id="zoomout" />
             </div>
             <input type="button" value="reset" id="reset" />
             <input type="button" value="Update" id="cloud-update" />
