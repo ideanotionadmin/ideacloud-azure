@@ -510,7 +510,7 @@ var wordCloud = function (stg, createjs, options) {
 
                 bitmap.scaleX = s;
                 bitmap.scaleY = s;
-
+                
                 var imageColor = fontColor.image;
                 var authorBitmap = new cjs.Bitmap(data.authorImage);
                 if (randomizeColor && randomizeColor.length > 0) {
@@ -640,6 +640,27 @@ var wordCloud = function (stg, createjs, options) {
 
                     var shape = new cjs.Shape(g);
                     shape.alpha = 0.1;
+                    shape.onClick = function() {
+                        $('#popup').html("<img src='img/loader.gif' />");
+                        $('#popup').addClass('loader');
+                        $('#popup').show();
+                        $('#popup-background').show();
+                        $.ajax({
+                            type: "GET",
+                            url: "https://api.twitter.com/1/statuses/oembed.json?id=" + item.id,
+                            dataType: "jsonp",
+                            data: {
+                                
+                            },
+                            error: function() {
+                                //alert('error...');
+                            },
+                            success: function (d) {
+                                $('#popup').removeClass("loader");
+                                $('#popup').html(d.html);
+                            }
+                        });
+                    };
                     item.content.addChild(shape);
                     item.collisionShape = obb({ x: -margin * 6, y: -margin * 6 }, w + margin * 14, h + margin * 14, degToRad(item.content.rotation));
                 }

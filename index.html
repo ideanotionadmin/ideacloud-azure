@@ -9,7 +9,6 @@
         <link href='http://fonts.googleapis.com/css?family=Kavoon|Aclonica|Permanent+Marker' rel='stylesheet' type='text/css' />
         <link href='css/style.css' rel='stylesheet' type='text/css' />
         <link href='css/jquery.minicolors.css' rel='stylesheet' type='text/css' />
-
     </head>    
     <body style="padding:0;margin:0;text-align: left; background-color:#000;color:#fff;">
         <div id="handler" style="cursor:pointer;position:absolute; z-index:2000;width:10px;height:10px;left:0px;top:0px;display:block;">+</div>
@@ -44,6 +43,7 @@
             <div>                
                 Shadow: <input type="checkbox" id="shadow"/>
             </div>
+            <textarea id="output" rows="40" cols="50"></textarea>
             <input type="button" value="reset" id="reset" />
             <input type="button" value="Update" id="cloud-update" />
         </div>
@@ -51,6 +51,8 @@
         <div id="screen">
             <canvas id="canvas" width="1920" height="1200"></canvas>
         </div>
+        <div id="popup" style="display:none;"></div>
+        <div id="popup-background" style="display:none;"></div>
         
      
         <script src="scripts/jquery.minicolors.js"></script>

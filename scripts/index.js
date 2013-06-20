@@ -167,7 +167,7 @@ var showing = false;
         stage = new cjs.Stage(canvas);
         container1 = new cjs.Container();
         container1.tween = cjs.Tween.get(container1);
-        container1.mouseEventsEnabled = false;
+        container1.mouseEventsEnabled = true;
         worker1 = wordCloud(container1, cjs, {
             factor: 1.5,
             sizeW: options.sizeW,
@@ -580,6 +580,11 @@ var showing = false;
             $('#options').show();
             showing = true;
         }
+    });
+
+    $('#popup-background').click(function() {
+        $('#popup-background').hide();
+        $('#popup').hide();
     });
 
 })();

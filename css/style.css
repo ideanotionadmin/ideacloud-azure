@@ -58,21 +58,6 @@ body {
     position: absolute;
 }
 
-#screen .loader {
-    top: 50%;
-    left: 50%;
-    margin-left: -80px;
-    margin-top: -80px;
-    position: absolute;
-    z-index: 10;
-}
-
-#screen #logo {
-    right: 20px;
-    bottom: 0px;
-    position: fixed;
-    z-index: 10;
-}
 
 /* options */
 #option-modal {
@@ -151,4 +136,29 @@ div#option-modal-open:hover {
 }
 .social-icon-3:hover {
     background-position: 80px top;
+}
+
+#popup-background {
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+    opacity: 0.6;
+    z-index: 50;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+#popup {
+    top: 50%;
+    left: 50%;
+    z-index: 1000;
+    position: absolute;
+     margin-left:-275px;
+    margin-top:-200px;
+}
+
+#popup.loader {
+    margin-left:-50px;
+    margin-top:-50px;
 }
