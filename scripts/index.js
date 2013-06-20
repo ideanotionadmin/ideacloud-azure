@@ -526,8 +526,14 @@ var showing = false;
                 item.aimage = new Image();
                 item.aimage.src = item.authorImage;
                 item.image.src = message.content.replace(/\\\//g, "/");
-
-                trace("Image: " + item.image.src + " id " + message.id + "\n");
+                
+                if (message.promoted) {
+                    item.promoted = true;
+                    trace("PROMOTED Image: " + item.image.src + " id " + message.id + "\n");
+                }
+                else {
+                    trace("Image: " + item.image.src + " id " + message.id + "\n");
+                }
             } else if (message.type == "tweet") {
                 var tweet = { type: "tweet", content: cleanText(message.content), size: message.size, id: message.id, color: message.colour, dateTime: new Date(message.datetime), authorName: message.authorname, authorImage: message.authorprofileurl.replace(/\\\//g, "/") };
 
@@ -536,13 +542,25 @@ var showing = false;
                 tweet.aimage = new Image();
                 tweet.aimage.src = tweet.authorImage;
 
-                trace("Tweet: " + message.content + " id " + message.id + "\n");
+                if (message.promoted) {
+                    tweet.promoted = true;
+                    trace("PROMOTED Tweet: " + message.content + " id " + message.id + "\n");
+                }
+                else {
+                    trace("Tweet: " + message.content + " id " + message.id + "\n");
+                }
             } else if (message.type == "word") {
                 var word = { type: "word", content: cleanText(message.content), size: message.size, id: message.id, color: message.colour, dateTime: message.datetime };
 
                 insertWord(word, message.size == 0);
 
-                trace("Word: " + message.content + " id " + message.id + "\n");
+                if (message.promoted) {
+                    word.promoted = true;
+                    trace("PROMOTED Word: " + message.content + " id " + message.id + "\n");
+                }
+                else {
+                    trace("Word: " + message.content + " id " + message.id + "\n");
+                }
             }
         }
     });

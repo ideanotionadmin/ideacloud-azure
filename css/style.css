@@ -154,8 +154,6 @@ div#option-modal-open:hover {
     left: 50%;
     z-index: 1000;
     position: absolute;
-     margin-left:-275px;
-    margin-top:-200px;
 }
 
 #popup.loader {

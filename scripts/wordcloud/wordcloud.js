@@ -547,10 +547,29 @@ var wordCloud = function (stg, createjs, options) {
                     item.content.addChild(shape);
                 }
 
+                var g = new cjs.Graphics();
+                g.beginStroke(cjs.Graphics.getRGB(0, 0, 0)).beginFill("#100");
+                g.drawRect(-margin * 3, -margin * 3, w + margin * 8, h + margin * 8);
+
+                var shape = new cjs.Shape(g);
+                shape.alpha = 0.01;
+                shape.onClick = function () {
+                    $('#popup').html("<img src='img/loader.gif' />");
+                    $('#popup').addClass('loader');
+                    $('#popup').show();
+                    $('#popup-background').show();
+                    $('#popup').removeClass("loader");
+                    $('#popup').html('<img src="' + data.image.src + '" style="max-height:550px;">');
+                    $('#popup').css("margin-top", (Math.min(data.image.height, 550) * -0.55) + "px");
+                    $('#popup').css("margin-left", (Math.min(data.image.height, 550) * -1 * data.image.width / data.image.height) / 2 + "px");
+                };
+                item.content.addChild(shape);
+                
                 item.content.rotation = 0;
                 if (useCache)
                     item.content.cache(-w, -h, w * 2, h * 3);
 
+                            
                 item.collisionShape = obb({ x: -margin, y: -margin }, w + margin * 2, h + margin * 2, degToRad(item.content.rotation));
 
                 item.tween = cjs.Tween.get(item.content);
@@ -645,21 +664,10 @@ var wordCloud = function (stg, createjs, options) {
                         $('#popup').addClass('loader');
                         $('#popup').show();
                         $('#popup-background').show();
-                        $.ajax({
-                            type: "GET",
-                            url: "https://api.twitter.com/1/statuses/oembed.json?id=" + item.id,
-                            dataType: "jsonp",
-                            data: {
-                                
-                            },
-                            error: function() {
-                                //alert('error...');
-                            },
-                            success: function (d) {
-                                $('#popup').removeClass("loader");
-                                $('#popup').html(d.html);
-                            }
-                        });
+                        $('#popup').removeClass("loader");
+                        $('#popup').html('<blockquote style="visibility:hidden" class="twitter-tweet" width="550"><p>' + item.text + '</p>&mdash; Twitter API (@' + data.authorName + ') <a href="https://twitter.com/twitterapi/status/' + item.id + '" >Open</a><script src="//platform.twitter.com/widgets.js" charset="utf-8"></script>');
+                        $('#popup').css("margin-top", "-275px");
+                        $('#popup').css("margin-left", "-275px");
                     };
                     item.content.addChild(shape);
                     item.collisionShape = obb({ x: -margin * 6, y: -margin * 6 }, w + margin * 14, h + margin * 14, degToRad(item.content.rotation));
