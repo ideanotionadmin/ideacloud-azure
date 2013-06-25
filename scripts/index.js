@@ -1,6 +1,6 @@
 ﻿var cjs = window.createjs;
 var debug = false;
-var dataSourceUrl = "http://confoo-cloud.cloudapp.net:80/";
+var dataSourceUrl = "http://social-cloud.cloudapp.net:80/";
 var useSocketIO = true;
 var showing = false;
 
