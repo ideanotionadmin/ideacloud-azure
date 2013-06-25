@@ -10,8 +10,7 @@ var showing = false;
     var container1;
     var dataSource = { image: [], word: [], tweet: [], ic: 0, wc: 0, tc: 0 };
     var mode = 0;
-    var effGoto = false;
-    var priorityVal = 1;
+    var effGoto = false;   
 
     var twitterSearchPhrase = 'Microsoft';
     var instaSearchPhrase = 'Microsoft';
@@ -34,6 +33,7 @@ var showing = false;
         sizeH: 1200,
         speedFactor: 1,
         shadow : 1,
+        promotedStays : 2,
     };
 
 
@@ -309,6 +309,7 @@ var showing = false;
         $('body').css('background-color', options.bgColor);
         $('input#speedFactor').val(options.speedFactor);
         $('input#imageSizeMax').val(options.imageSizeMax);
+        $('input#promoted').val(options.promotedStays);
         $('input#imageSize').val(options.imageSize);
         $('input#tweetSizeMax').val(options.tweetSizeMax);
         $('input#tweetSize').val(options.tweetSize);
@@ -416,6 +417,7 @@ var showing = false;
             sizeH: 1200,
             speedFactor: 1,
             shadow: 1,
+            promotedStays : 2,
         };
         optionsToUrl();
         window.location.href = window.location.href;
@@ -439,7 +441,7 @@ var showing = false;
         options.tweetSizeMax = parseInt($('input#tweetSizeMax').val());
         options.imageSize = parseInt($('input#imageSize').val());
         options.imageSizeMax = parseInt($('input#imageSizeMax').val());
-
+        options.promotedStays = parseInt($('input#promoted').val());
         options.wordColors = $('input#wordColors').val();
 
 
@@ -527,7 +529,7 @@ var showing = false;
                 
                 if (message.promoted) {
                     item.promoted = true;
-                    item.priority = priorityVal;
+                    item.priority = options.promotedStays;
                     trace("PROMOTED Image: " + item.image.src + " id " + message.id + "\n");
                 }
                 else {
@@ -544,7 +546,7 @@ var showing = false;
 
                 if (message.promoted) {
                     tweet.promoted = true;
-                    tweet.priority = priorityVal;
+                    tweet.priority = options.promotedStays;
                     trace("PROMOTED Tweet: " + message.content + " id " + message.id + "\n");
                 }
                 else {
@@ -558,7 +560,7 @@ var showing = false;
 
                 if (message.promoted) {
                     word.promoted = true;
-                    word.priority = priorityVal;
+                    word.priority = options.promotedStays;
                     trace("PROMOTED Word: " + message.content + " id " + message.id + "\n");
                 }
                 else {
