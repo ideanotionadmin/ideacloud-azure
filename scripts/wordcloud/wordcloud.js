@@ -439,6 +439,11 @@ var wordCloud = function (stg, createjs, options) {
 
                     setTimeout(callback, speed);
                 }, function () {
+                    if (!data.repeat)
+                        data.repeat = 1;
+                    if (data.repeat++ < 5)
+                        instance.dataSource.unshift(data);
+                    
                     trace("clean up");
                     $.when(instance.cleanUpStage(worker)).done(function () {
                         instance.run(callback);
@@ -503,6 +508,10 @@ var wordCloud = function (stg, createjs, options) {
                     sizeMax = data.size;
                 }
                 var imagePixel = imageSize + (data.size / sizeMax) * (imageSizeMax - imageSize);
+
+                if (data.promoted) {
+                    imagePixel = imageSizeMax;
+                }
 
                 var margin = imageSize / 40;
                 //imageSize *= f;
@@ -584,6 +593,11 @@ var wordCloud = function (stg, createjs, options) {
 
                 var tweetFontSize = tweetSize + (data.size / sizeMax) * (tweetSizeMax - tweetSize);
 
+                if (data.promoted) {
+                    tweetFontSize = tweetSizeMax;
+                }
+
+
                 //tweetFontSize *= f;
                 var margin = tweetFontSize / 6;
                 fontStyle = tweetFontSize + "px '" + "Arial" + "'";
@@ -659,6 +673,9 @@ var wordCloud = function (stg, createjs, options) {
 
                     var shape = new cjs.Shape(g);
                     shape.alpha = 0.1;
+                    if (data.promoted)
+                        shape.alpha = 0.3;
+                    
                     shape.onClick = function() {
                         $('#popup').html("<img src='img/loader.gif' />");
                         $('#popup').addClass('loader');
@@ -689,6 +706,11 @@ var wordCloud = function (stg, createjs, options) {
                 }
 
                 var wFontSize = wordSize + (data.size / sizeMax) * (wordSizeMax - wordSize);
+                
+
+                if (data.promoted) {
+                    wFontSize = wordSizeMax;
+                }
                 var wordColor = fontColor.word;
                 var wordShadowColor = shadowColor.word;
                 if (randomizeColor && randomizeColor.length > 0) {
@@ -838,6 +860,7 @@ var wordCloud = function (stg, createjs, options) {
                     var d = $.Deferred();
                     var rmvItem = items.shift();
                     if (rmvItem.promoted && rmvItem.priority > 0) {
+                        rmvItem.priority--;
                         items.push(rmvItem);
                         d.resolve();
                     } else {

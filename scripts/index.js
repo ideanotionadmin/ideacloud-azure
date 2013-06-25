@@ -11,6 +11,7 @@ var showing = false;
     var dataSource = { image: [], word: [], tweet: [], ic: 0, wc: 0, tc: 0 };
     var mode = 0;
     var effGoto = false;
+    var priorityVal = 1;
 
     var twitterSearchPhrase = 'Microsoft';
     var instaSearchPhrase = 'Microsoft';
@@ -28,7 +29,7 @@ var showing = false;
         tweetSize : 38,
         tweetSizeMax : 46,
         imageSize : 400,
-        imageSizeMax: 480,
+        imageSizeMax: 540,
         sizeW: 1920,
         sizeH: 1200,
         speedFactor: 1,
@@ -355,9 +356,9 @@ var showing = false;
                 change: null,
                 changeDelay: 0,
                 control: 'hue',
-                defaultValue: options.tweetColor,
+                defaultValue: options.fadeColor,
                 hide: function () {
-                    options.tweetColor = $('input#fadeColor').minicolors('value');
+                    options.fadeColor = $('input#fadeColor').minicolors('value');
                 },
                 hideSpeed: 100,
                 inline: false,
@@ -378,9 +379,9 @@ var showing = false;
                change: null,
                changeDelay: 0,
                control: 'hue',
-               defaultValue: options.fadeColor,
+               defaultValue: options.tweetColor,
                hide: function () {
-                   options.fadeColor = $('input#tweetColor').minicolors('value');
+                   options.tweetColor = $('input#tweetColor').minicolors('value');
                },
                hideSpeed: 100,
                inline: false,
@@ -410,7 +411,7 @@ var showing = false;
             tweetSize: 38,
             tweetSizeMax: 46,
             imageSize: 400,
-            imageSizeMax: 480,
+            imageSizeMax: 540,
             sizeW: 1920,
             sizeH: 1200,
             speedFactor: 1,
@@ -520,60 +521,63 @@ var showing = false;
             if (message.type == "image") {
                 var item = { type: "image", content: message.content.replace(/\\\//g, "/"), size: message.size, id: message.id, color: message.colour, dateTime: new Date(message.datetime), authorName: message.authorname, authorImage: message.authorprofileurl.replace(/\\\//g, "/") };
                 item.image = new Image();
-                item.image.onload = function () {
-                    insertImage(item, message.size == 0);
-                };
                 item.aimage = new Image();
                 item.aimage.src = item.authorImage;
                 item.image.src = message.content.replace(/\\\//g, "/");
                 
                 if (message.promoted) {
                     item.promoted = true;
+                    item.priority = priorityVal;
                     trace("PROMOTED Image: " + item.image.src + " id " + message.id + "\n");
                 }
                 else {
                     trace("Image: " + item.image.src + " id " + message.id + "\n");
                 }
+                item.image.onload = function () {
+                    insertImage(item, message.size == 0);
+                };
             } else if (message.type == "tweet") {
                 var tweet = { type: "tweet", content: cleanText(message.content), size: message.size, id: message.id, color: message.colour, dateTime: new Date(message.datetime), authorName: message.authorname, authorImage: message.authorprofileurl.replace(/\\\//g, "/") };
-
-                insertTweet(tweet, message.size == 0);
 
                 tweet.aimage = new Image();
                 tweet.aimage.src = tweet.authorImage;
 
                 if (message.promoted) {
                     tweet.promoted = true;
+                    tweet.priority = priorityVal;
                     trace("PROMOTED Tweet: " + message.content + " id " + message.id + "\n");
                 }
                 else {
                     trace("Tweet: " + message.content + " id " + message.id + "\n");
                 }
+                if (tweet.content.length > 4)
+                    insertTweet(tweet, message.size == 0);
             } else if (message.type == "word") {
                 var word = { type: "word", content: cleanText(message.content), size: message.size, id: message.id, color: message.colour, dateTime: message.datetime };
 
-                insertWord(word, message.size == 0);
 
                 if (message.promoted) {
                     word.promoted = true;
+                    word.priority = priorityVal;
                     trace("PROMOTED Word: " + message.content + " id " + message.id + "\n");
                 }
                 else {
                     trace("Word: " + message.content + " id " + message.id + "\n");
                 }
+                insertWord(word, message.size == 0);
             }
         }
     });
 
     function insertImage(item, remove) {
-        if (remove) {
+        if (remove || item.promoted) {
             worker3.dataSource.unshift(item);
         } else {
             worker3.dataSource.push(item);
         }
     }
     function insertTweet(tweet, remove) {
-        if (remove) {
+        if (remove || tweet.promoted) {
             worker2.dataSource.unshift(tweet);
 
         } else {
@@ -581,7 +585,7 @@ var showing = false;
         }
     }
     function insertWord(word, remove) {
-        if (remove) {
+        if (remove || word.promoted) {
             worker1.dataSource.unshift(word);
 
         } else {
