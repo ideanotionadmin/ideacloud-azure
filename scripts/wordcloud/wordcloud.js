@@ -488,7 +488,7 @@ var wordCloud = function (stg, createjs, options) {
                 data.size = 1;
 
             if (data.promoted) {
-                item.priority = 1;
+                item.priority = data.priority;
                 data.size *= 1.5;
             }
 
